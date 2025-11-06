@@ -8,5 +8,6 @@ Envoie de requêtes http get à l’API pour rechercher une vidéo
 
 commit:
 
-git commit -am "raison commit"
-git push origin
+- git commit -am "raison commit"
+
+- git push origin
