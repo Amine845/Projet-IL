@@ -1,4 +1,4 @@
-// server.js
+// control/serveur.js
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -8,72 +8,70 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// On sert les fichiers statiques depuis la racine (pour le CSS/JS plus tard)
-app.use(express.static(__dirname));
+// --- GESTION DES CHEMINS ---
+// __dirname est le dossier "control". 
+// On veut servir les fichiers statiques (css/js/html) qui sont dans "Dossier_General" (un cran au-dessus)
+const cheminRacine = path.join(__dirname, '../');
+app.use(express.static(cheminRacine));
 
-// On dit explicitement d'envoyer index.html quand on va sur l'accueil '/'
+// Route pour la page d'accueil (index.html)
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+    res.sendFile(path.join(cheminRacine, 'index.html'));
 });
 
-// --- SIMULATION BASE DE DONNÉES (LOCALE) ---
-// On stocke les salons ici. Structure : { "CODE_SALON": { hostId: "socket_id", users: [] } }
+// Route pour la page de salon (room.html)
+app.get('/room', (req, res) => {
+    res.sendFile(path.join(cheminRacine, 'room.html'));
+});
+
+// --- BASE DE DONNÉES LOCALE ---
 let rooms = {}; 
 
-// Fonction utilitaire pour générer un code de salon aléatoire (ex: 123456)
+// Générateur de code
 function generateRoomCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 io.on('connection', (socket) => {
-    console.log('Un utilisateur est connecté :', socket.id);
-
-    // --- ÉVÉNEMENT : CRÉER UN SALON ---
-    socket.on('create_room', (username) => {
-        const roomCode = generateRoomCode();
-        
-        // Création de l'objet salon
-        rooms[roomCode] = {
-            host: socket.id,
-            users: [{ id: socket.id, username: username }] // On ajoute le créateur
-        };
-
-        socket.join(roomCode); // Fonction Socket.io pour rejoindre un "canal"
-        
-        // On renvoie le code au client pour qu'il l'affiche
-        socket.emit('room_created', roomCode);
-        
-        // On met à jour la liste des utilisateurs dans le salon
-        io.to(roomCode).emit('update_users', rooms[roomCode].users);
-        
-        console.log(`Salon créé : ${roomCode} par ${username}`);
+    
+    // Événement spécial : demande de création de code (depuis index.html)
+    socket.on('request_create_room', () => {
+        const code = generateRoomCode();
+        // On renvoie juste le code, la redirection se fera côté client
+        socket.emit('room_created', code);
     });
 
-    // --- ÉVÉNEMENT : REJOINDRE UN SALON ---
+    // Événement : Rejoindre le salon (depuis room.html)
     socket.on('join_room', (data) => {
         const { roomCode, username } = data;
 
-        // Vérifier si le salon existe
-        if (rooms[roomCode]) {
-            rooms[roomCode].users.push({ id: socket.id, username: username });
-            socket.join(roomCode);
-
-            // Dire au client que c'est bon
-            socket.emit('room_joined', roomCode);
-
-            // Prévenir tout le monde dans le salon qu'il y a un nouveau venu
-            io.to(roomCode).emit('update_users', rooms[roomCode].users);
-            
-            console.log(`${username} a rejoint le salon ${roomCode}`);
-        } else {
-            socket.emit('error_message', "Ce code de salon n'existe pas !");
+        // Si le salon n'existe pas encore (première connexion), on le crée à la volée
+        if (!rooms[roomCode]) {
+            rooms[roomCode] = { users: [] };
+            console.log(`Salon ${roomCode} initialisé.`);
         }
+
+        // Ajout de l'utilisateur
+        rooms[roomCode].users.push({ id: socket.id, username: username });
+        socket.join(roomCode);
+
+        // Notifier tout le monde
+        io.to(roomCode).emit('update_users', rooms[roomCode].users);
+        
+        // Message système
+        socket.to(roomCode).emit('receive_message', {
+            username: 'Système',
+            text: `${username} a rejoint le salon.`
+        });
     });
 
-    // --- GESTION DE LA DÉCONNEXION ---
+    // Chat
+    socket.on('send_message', (data) => {
+        io.to(data.roomCode).emit('receive_message', data);
+    });
+
+    // Déconnexion
     socket.on('disconnect', () => {
-        // Logique simple : on parcourt les salons pour retirer l'utilisateur
-        // (Dans une vraie DB ce sera plus propre, ici c'est du bricolage pour le prototype)
         for (const code in rooms) {
             rooms[code].users = rooms[code].users.filter(user => user.id !== socket.id);
             io.to(code).emit('update_users', rooms[code].users);
