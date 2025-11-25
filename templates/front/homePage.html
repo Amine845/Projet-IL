@@ -1,0 +1,62 @@
+<!-- room.html -->
+<!DOCTYPE html>
+<html lang="fr">
+
+
+<!-- INFORMATIONS EN LIEN AVEC CE DOCUMENT
+ 
+
+Les ID :
+
+• input-pseudo      =  entrée text pour le pseudo
+• input-code        =  entrée text pour le code room
+• rejoindre-salon   =  boutton pour entrer dans un salon à l'aide du code
+• creer-salon       =  bouton pour créer un salon
+
+-->
+
+
+<head>
+    <meta charset="UTF-8">
+    <title>StreamSquad - Salon</title>
+
+    <!-- Le CSS sera créé ultérieurement-->
+
+    <!--Ce code CSS est provisoire-->
+    <style>
+        body {
+            background-color: rgb(46, 54, 77);
+        }
+
+        .cadreFlottant{
+            background-color: grey;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px ;
+        }
+        
+        .positionCentre {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- Formulaire du menu d'acceuil-->
+
+    <div class="cadreFlottant positionCentre">
+        <h1>Stream Squad</h1>
+        <form id="form-accueil">
+            <input id="input-pseudo" type="text" placeholder="Ex : azerty84" value="" /> </br>
+            <input id="input-code" type="text" placeholder="Ex : 123456" value="" /> </br>
+            <input id="rejoindre-salon" type="submit" value="REJOINDRE LE SALON" /></br>
+            <input id="creer-salon" type="submit" value="CRÉER UN SALON" />
+        </form>
+    </div>
+</body>
+
+</html>
