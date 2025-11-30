@@ -27,6 +27,35 @@
             </div>
         </div>
 
+        <!-- BARRE DE RECHERCHE AMINE-->
+        <div class="card bg-dark border-secondary">
+            <div class="card-header border-secondary">
+                <h5 class="mb-0"><i class="fa fa-search"></i> Ajouter une vidéo</h5>
+            </div>
+            <div class="card-body">
+                <form id="search-form" class="row g-2">
+                    <div class="col-10">
+                        <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher sur YouTube..." required>
+                    </div>
+                    <div class="col-2">
+                        <button type="submit" id="recherche" class="btn btn-primary w-100">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Zone de statut -->
+                <div id="status-message" class="alert alert-info mt-3 d-none" role="alert"></div>
+
+                <!-- Résultats -->
+                <div id="results-container" class="row mt-3 g-3">
+                    <!-- Les vidéos s'afficheront ici via JS -->
+                </div>
+            </div>
+        </div>
+
+
+
         <!-- Colonne Droite : Chat & Users -->
         <div class="col-md-4">
             <!-- Liste Users -->
@@ -92,6 +121,8 @@
     document.getElementById('btn-send').addEventListener('click', sendMessage);
     msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
 </script>
+
+<script src="admin/javascript/search.js"></script>
 
 </body>
 </html>

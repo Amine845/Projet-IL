@@ -1,46 +1,97 @@
-const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU";
-
+// Remplacez par votre vraie clé API.
+const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
 const API_URL = "https://www.googleapis.com/youtube/v3/search";
+
 const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
 const resultsContainer = document.getElementById('results-container');
 const statusMessage = document.getElementById('status-message');
 const searchButton = document.getElementById('recherche');
 
-// construit les videos recherchée 
-function videoRecherchee(video){
+function hideStatus() {
+    if (statusMessage) statusMessage.classList.add('d-none'); // Utilise d-none pour Bootstrap
+}
+
+function showStatus(msg) {
+    if (statusMessage) {
+        statusMessage.textContent = msg;
+        statusMessage.classList.remove('d-none');
+        statusMessage.classList.add('alert', 'alert-info'); // Classes Bootstrap
+    }
+}
+
+
+function videoRecherchee(video) {
     const videoId = video.id.videoId;
     const title = video.snippet.title;
     const thumbnailUrl = video.snippet.thumbnails.high.url;
-
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    return'<div class="w3-padding-small"><a href="${videoUrl}" class="w3-container"><img src="${thumbnailUrl}" alt="${title}" class="video-thumbnail w3-round-t-large"></a></div>';
+    // HTML adapté pour une Card Bootstrap (plus propre dans votre room.html)
+    return `
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 bg-dark border-secondary text-white">
+                <a href="${videoUrl}" target="_blank" class="text-decoration-none text-white">
+                    <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
+                    <div class="card-body p-2">
+                        <p class="card-text small text-truncate">${title}</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    `;
 }
 
-// créer les items vidéos en fonction de la recherche
-function renderResults(items){
-    const htmlContent = items.map(createVideoCard).join('');
+function renderResults(items) {
+    if (!items || items.length === 0) {
+        showStatus("Aucun résultat trouvé.");
+        return;
+    }
+    
+    const htmlContent = items.map(videoRecherchee).join('');
     resultsContainer.innerHTML = htmlContent;
     hideStatus();
 }
 
-// emet la recherche youtube via la clé API ainsi que la recherche passée en paramètre
-// fait la recherche HTTP à l'aide de cette fonction javascript: fetch
-// urlsearchparams = paramètres de la recherche 
-function rechercheYoutubeVideos(recherche){
+async function rechercheYoutubeVideos(recherche) {
+    if (!recherche) return;
+
+    showStatus("Recherche en cours...");
+    if (resultsContainer) resultsContainer.innerHTML = '';
+    
+    // Correction : Utilisation de l'argument 'recherche' passé à la fonction
     const params = new URLSearchParams({
         part: 'snippet',
-        q: searchTerm,
+        q: recherche, 
         key: apiKey,
         type: 'video',
         maxResults: 12
     });
-    const reponse = fetch(`${API_URL}?${params.toString()}`);
+
+    try {
+        // await pour attendre la réponse réseau
+        const response = await fetch(`${API_URL}?${params.toString()}`);
+        
+        if (!response.ok) {
+            throw new Error(`Erreur API: ${response.status}`);
+        }
+
+        // await pour le parsing JSON
+        const data = await response.json();
+        renderResults(data.items);
+
+    } catch (error) {
+        console.error("Erreur:", error);
+        showStatus("Erreur lors de la recherche.");
+    }
 }
 
-form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const searchTerm = input.value.trim();
-    fetchYouTubeVideos(searchTerm);
-});
+// --- ÉCOUTEUR D'ÉVÉNEMENT ---
+if (form) {
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const searchTerm = input.value.trim();
+        // Correction : Appel de la bonne fonction renommée
+        rechercheYoutubeVideos(searchTerm);
+    });
+}
