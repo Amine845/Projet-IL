@@ -12,14 +12,15 @@
         body { background-color: #222; color: white; } 
         .chat-container { height: 400px; display: flex; flex-direction: column; }
         .chat-messages { flex-grow: 1; overflow-y: auto; background: #333; padding: 10px; }
+        .system-msg { font-style: italic; color: #aaa; font-size: 0.9em; text-align: center; margin: 5px 0; }
     </style>
 </head>
 <body>
 
 <div class="container-fluid p-4">
-    <div class="d-flex justify-content-between">
+    <div class="d-flex justify-content-between align-items-center">
         <h3>Salon <span id="display-code" class="text-warning"></span></h3>
-        <a href="/" class="btn btn-outline-danger">Quitter</a>
+        <a href="/" class="btn btn-outline-danger btn-sm">Quitter</a>
     </div>
 
     <div class="row mt-3">
@@ -32,14 +33,18 @@
         <!-- Colonne Droite : Chat & Users -->
         <div class="col-md-4">
             <!-- Liste Users -->
-            <div class="mb-3 p-2 border border-secondary rounded">
-                <h6>Utilisateurs :</h6>
-                <ul id="users-list" class="list-unstyled mb-0"></ul>
+            <div class="mb-3 p-2 border border-secondary rounded bg-dark">
+                <h6 class="text-muted small mb-2">Utilisateurs en ligne :</h6>
+                <ul id="users-list" class="list-unstyled mb-0" style="max-height: 80px; overflow-y: auto;"></ul>
             </div>
 
             <!-- Chat -->
             <div class="card bg-dark text-white border-secondary chat-container">
                 <div id="chat-box" class="chat-messages"></div>
+                
+                <!-- Indicateur de frappe (Nouveau) -->
+                <div id="typing-indicator" class="px-2 text-warning small" style="height: 20px; font-size: 0.8em;"></div>
+
                 <div class="card-footer border-secondary d-flex">
                     <input type="text" id="msg-input" class="form-control bg-secondary text-white border-0 me-2" placeholder="Message...">
                     <button id="btn-send" class="btn btn-primary">Envoyer</button>
@@ -56,7 +61,7 @@
         <div class="card-body">
             <form id="search-form" class="row g-4">
                 <div class="col-10">
-                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher"  required>
+                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher sur YouTube"  required>
                 </div>
                 <div class="col-2">
                     <button type="submit" id="recherche" class="btn btn-primary w-100"> 
@@ -91,25 +96,39 @@
     // 2. Se connecter au salon
     socket.emit('join_room', { roomCode, username });
 
-    // --- GESTION CHAT & USERS (Même logique qu'avant) ---
+    // --- GESTION CHAT & USERS ---
     const chatBox = document.getElementById('chat-box');
     const usersList = document.getElementById('users-list');
     const msgInput = document.getElementById('msg-input');
+    const typingIndicator = document.getElementById('typing-indicator');
 
+    // Mise à jour de la liste des utilisateurs
     socket.on('update_users', (users) => {
-        usersList.innerHTML = users.map(u => `<li>🟢 ${u.username}</li>`).join('');
+        usersList.innerHTML = users.map(u => `<li><span style="color:#0f0;">●</span> ${u.username}</li>`).join('');
     });
 
+    // Réception d'un message
     socket.on('receive_message', (data) => {
         const div = document.createElement('div');
-        div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
+        
+        if (data.isSystem) {
+            // Message système (Connexion/Déconnexion)
+            div.className = 'system-msg';
+            div.textContent = data.text;
+        } else {
+            // Message utilisateur normal
+            div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
+        }
+        
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 
+    // Envoi d'un message
     function sendMessage() {
         if (msgInput.value.trim()) {
-            socket.emit('send_message', { roomCode, username, message: msgInput.value });
+            // CORRECTION ICI : on utilise bien 'text'
+            socket.emit('send_message', { roomCode, username, text: msgInput.value });
             msgInput.value = '';
         }
     }
@@ -117,15 +136,29 @@
     document.getElementById('btn-send').addEventListener('click', sendMessage);
     msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
 
+    // --- GESTION DU "EN TRAIN D'ÉCRIRE" ---
+    let typingTimer;
 
-    // javascript QUI GERE LA BARRE DE RECHERCHE 
+    msgInput.addEventListener('input', () => {
+        socket.emit('typing', { roomCode, username });
+    });
+
+    socket.on('user_typing', (userTyping) => {
+        typingIndicator.textContent = `${userTyping} est en train d'écrire...`;
+        
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            typingIndicator.textContent = '';
+        }, 3000);
+    });
+
+    // --- BARRE DE RECHERCHE YOUTUBE (Code d'Amine) ---
     const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
     const API_URL = "https://www.googleapis.com/youtube/v3/search";
 
     const form = document.getElementById('search-form');
     const input = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
-    const searchButton = document.getElementById('recherche');
 
     function videoRecherchee(video) {
         const videoId = video.id.videoId;
@@ -133,7 +166,6 @@
         const thumbnailUrl = video.snippet.thumbnails.high.url;
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-        // HTML adapté pour une Card Bootstrap
         return `
             <div class="col-md-4 mb-3">
                 <div class="card h-100 bg-dark border-secondary text-white">
@@ -149,6 +181,7 @@
     }
 
     function renderResults(items) {
+        if(!items) return;
         const htmlContent = items.map(videoRecherchee).join('');
         resultsContainer.innerHTML = htmlContent;
     }
@@ -159,18 +192,19 @@
             q: recherche, 
             key: apiKey,
             type: 'video',
-            maxResults: 30
+            maxResults: 12
         });
 
-        // await pour attendre la réponse réseau
-        const response = await fetch(`${API_URL}?${params.toString()}`);
-
-        // await pour le parsing JSON
-        const data = await response.json();
-        renderResults(data.items);
+        try {
+            const response = await fetch(`${API_URL}?${params.toString()}`);
+            if(!response.ok) throw new Error("Erreur API");
+            const data = await response.json();
+            renderResults(data.items);
+        } catch(e) {
+            console.error(e);
+        }
     }
 
-    // on écoute les evenements de notre barre de recherche ici et on execute la fonction de recherche en conséquence 
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         const searchTerm = input.value.trim();
