@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <title>StreamSquad - Salon</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="templates/CSS/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style> 
         body { background-color: #222; color: white; } 
         .chat-container { height: 400px; display: flex; flex-direction: column; }
@@ -44,27 +47,24 @@
             </div>
         </div>
     </div>
+    
+    <br>
 
-
-        <!-- BARRE DE RECHERCHE AMINE-->
+    <!-- BARRE DE RECHERCHE AMINE-->
     <div class="card bg-dark border-secondary">
 
         <div class="card-body">
-            <form id="search-form" class="row g-2">
+            <form id="search-form" class="row g-4">
                 <div class="col-10">
-                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher sur YouTube..." required>
+                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher"  required>
                 </div>
                 <div class="col-2">
-                    <button type="submit" id="recherche" class="btn btn-primary w-100"> RECHERCHER
+                    <button type="submit" id="recherche" class="btn btn-primary w-100"> 
                         <i class="fa fa-search"></i>
                     </button>
                 </div>
             </form>
 
-            <!-- Zone de statut -->
-            <div id="status-message" class="alert alert-info mt-3 d-none" role="alert"></div>
-
-            <!-- Résultats -->
             <div id="results-container" class="row mt-3 g-3">
                 <!-- Les vidéos s'afficheront ici via JS -->
             </div>
@@ -125,21 +125,7 @@
     const form = document.getElementById('search-form');
     const input = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
-    const statusMessage = document.getElementById('status-message');
     const searchButton = document.getElementById('recherche');
-
-    function hideStatus() {
-        if (statusMessage) statusMessage.classList.add('d-none'); // Utilise d-none pour Bootstrap
-    }
-
-    function showStatus(msg) {
-        if (statusMessage) {
-            statusMessage.textContent = msg;
-            statusMessage.classList.remove('d-none');
-            statusMessage.classList.add('alert', 'alert-info'); // Classes Bootstrap
-        }
-    }
-
 
     function videoRecherchee(video) {
         const videoId = video.id.videoId;
@@ -147,7 +133,7 @@
         const thumbnailUrl = video.snippet.thumbnails.high.url;
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-        // HTML adapté pour une Card Bootstrap (plus propre dans votre room.html)
+        // HTML adapté pour une Card Bootstrap
         return `
             <div class="col-md-4 mb-3">
                 <div class="card h-100 bg-dark border-secondary text-white">
@@ -163,59 +149,34 @@
     }
 
     function renderResults(items) {
-        if (!items || items.length === 0) {
-            showStatus("Aucun résultat trouvé.");
-            return;
-        }
-        
         const htmlContent = items.map(videoRecherchee).join('');
         resultsContainer.innerHTML = htmlContent;
-        hideStatus();
     }
 
     async function rechercheYoutubeVideos(recherche) {
-        if (!recherche) return;
-
-        showStatus("Recherche en cours...");
-        if (resultsContainer) resultsContainer.innerHTML = '';
-        
-        // Correction : Utilisation de l'argument 'recherche' passé à la fonction
         const params = new URLSearchParams({
             part: 'snippet',
             q: recherche, 
             key: apiKey,
             type: 'video',
-            maxResults: 12
+            maxResults: 30
         });
 
-        try {
-            // await pour attendre la réponse réseau
-            const response = await fetch(`${API_URL}?${params.toString()}`);
-            
-            if (!response.ok) {
-                throw new Error(`Erreur API: ${response.status}`);
-            }
+        // await pour attendre la réponse réseau
+        const response = await fetch(`${API_URL}?${params.toString()}`);
 
-            // await pour le parsing JSON
-            const data = await response.json();
-            renderResults(data.items);
-
-        } catch (error) {
-            console.error("Erreur:", error);
-            showStatus("Erreur lors de la recherche.");
-        }
+        // await pour le parsing JSON
+        const data = await response.json();
+        renderResults(data.items);
     }
 
-    // --- ÉCOUTEUR D'ÉVÉNEMENT ---
-    if (form) {
-        form.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const searchTerm = input.value.trim();
-            // Correction : Appel de la bonne fonction renommée
-            rechercheYoutubeVideos(searchTerm);
-        });
-    }
+    // on écoute les evenements de notre barre de recherche ici et on execute la fonction de recherche en conséquence 
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const searchTerm = input.value.trim();
+        rechercheYoutubeVideos(searchTerm);
+    });
+
 </script>
-
 </body>
 </html>
