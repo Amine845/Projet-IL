@@ -27,6 +27,20 @@
         <a href="/" class="btn btn-outline-danger btn-sm">Quitter</a>
     </div>
 
+    <div class="mb-4">
+        <form id="search-form">
+            <div class="input-group">
+                <input type="text" id="search-input" class="form-control bg-dark text-white border-secondary" placeholder="Rechercher" required>
+                <button type="submit" id="recherche" class="btn btn-primary">
+                    <i class="fa fa-search"></i>
+                </button>
+            </div>
+        </form>
+
+        <div id="results-container" class="row mt-3 g-3">
+    </div>
+
+
     <div class="row mt-3">
         <!-- Colonne Gauche : Lecteur Vidéo -->
         <div class="col-md-8">
@@ -70,23 +84,25 @@
             </div>
         </div>
     </div>
-    
-    <br>
-    <!-- BARRE DE RECHERCHE AMINE (CONSERVÉE) -->
-    <div class="card bg-dark border-secondary">
-        <div class="card-body">
-            <h5 class="card-title">Recherche YouTube (Amine)</h5>
-            <form id="search-form" class="row g-2">
-                <div class="col-10">
-                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher sur YouTube..." required>
-                </div>
-                <div class="col-2">
-                    <button type="submit" class="btn btn-primary w-100"><i class="fa fa-search"></i></button>
-                </div>
-            </form>
-            <div id="results-container" class="row mt-3 g-3"></div>
-        </div>
+        <br>
+    <div class="d-flex justify-content-end mb-4">
+        <button id="add-current-video-btn" class="btn btn-success" title="Ajouter la vidéo en cours à la playlist">
+            <i class="fa fa-refresh"></i> Ajouter à la Playlist
+        </button>
     </div>
+
+    <!-- PLAYLIST -->
+    <div class="card bg-dark text-white border-secondary mb-3">
+        <div class="card-header border-secondary bg-secondary text-white">
+            <h6 class="mb-0"><i class="fas fa-list"></i> Playlist en attente</h6>
+        </div>
+        <ul id="playlist-list" class="list-group list-group-flush bg-dark" style="max-height: 200px; overflow-y: auto;">
+            <li class="list-group-item bg-dark text-muted text-center small border-secondary">
+                Aucune vidéo dans la playlist.
+            </li>
+        </ul>
+    </div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -223,6 +239,7 @@
     const API_URL = "https://www.googleapis.com/youtube/v3/search";
     const form = document.getElementById('search-form');
     const input = document.getElementById('search-input');
+    const playlistList = document.getElementById('playlist-list');
     const resultsContainer = document.getElementById('results-container');
 
     function videoRecherchee(video) {
@@ -256,6 +273,25 @@
         e.preventDefault();
         rechercheYoutubeVideos(input.value.trim());
     });
+
+        // function addToPlaylist(videoId, title, thumbUrl) {
+    //     const videoId = video.id.videoId;
+    //     const title = video.snippet.title;
+    //     const thumbnailUrl = video.snippet.thumbnails.high.url;
+        
+    //     return `
+    //         <div class="d-flex align-items-center">
+    //             <img src="${thumbUrl}" alt="Thumb" style="width: 50px; height: 38px; object-fit: cover; border-radius: 4px;" class="me-3">
+    //             <div style="overflow: hidden;">
+    //                 <div class="fw-bold text-truncate" title="${title}" style="font-size: 0.9rem;">${title}</div>
+    //             </div>
+    //         </div>
+    //         <button class="btn btn-sm btn-outline-danger ms-2" onclick="event.stopPropagation(); this.parentElement.remove();" title="Retirer">
+    //             <i class="fas fa-times"></i>
+    //         </button>
+    //     `;
+    // }
+
 
 </script>
 </body>
