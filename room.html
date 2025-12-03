@@ -13,6 +13,10 @@
         .chat-container { height: 400px; display: flex; flex-direction: column; }
         .chat-messages { flex-grow: 1; overflow-y: auto; background: #333; padding: 10px; }
         .system-msg { font-style: italic; color: #aaa; font-size: 0.9em; text-align: center; margin: 5px 0; }
+        
+        /* Conteneur responsive pour YouTube */
+        #player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: black; border: 1px solid #444; }
+        #player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
@@ -24,19 +28,29 @@
     </div>
 
     <div class="row mt-3">
-        <!-- Colonne Gauche : Vidéo -->
+        <!-- Colonne Gauche : Lecteur Vidéo -->
         <div class="col-md-8">
-            <div class="bg-black d-flex align-items-center justify-content-center" style="height: 500px; border: 1px solid #444;">
-                <h4 class="text-muted">Lecteur Vidéo (Bientôt)</h4>
-            </div>
             
-            <div class="d-flex justify-content-end mb-4">
-                <button id="add-current-video-btn" class="btn btn-success" title="Ajouter la vidéo en cours à la playlist">
-                    <i class="fas fa-plus-circle"></i> Ajouter à la Playlist
-                </button>
+            <!-- === AJOUT : CHAMP ID MANUEL === -->
+            <div class="input-group mb-2">
+                <span class="input-group-text bg-secondary text-white border-secondary">ID YouTube</span>
+                <input type="text" id="manual-id-input" class="form-control bg-dark text-white border-secondary" placeholder="ex: dQw4w9WgXcQ">
+                <button class="btn btn-danger" id="btn-manual-load">Charger</button>
+            </div>
+            <!-- ============================== -->
+
+            <!-- Infos Contrôleur -->
+            <div class="mb-2 d-flex justify-content-between">
+                <span>En contrôle : <strong id="controller-name" class="text-info">Personne</strong></span>
+                <button id="btn-control" class="btn btn-sm btn-warning">Prendre le contrôle</button>
             </div>
 
+            <!-- Lecteur YouTube (API) -->
+            <div id="player-container">
+                <div id="player"></div>
+            </div>
         </div>
+
         <!-- Colonne Droite : Chat & Users -->
         <div class="col-md-4">
             <!-- Liste Users -->
@@ -48,10 +62,7 @@
             <!-- Chat -->
             <div class="card bg-dark text-white border-secondary chat-container">
                 <div id="chat-box" class="chat-messages"></div>
-                
-                <!-- Indicateur de frappe (Nouveau) -->
-                <div id="typing-indicator" class="px-2 text-warning small" style="height: 20px; font-size: 0.8em;"></div>
-
+                <div id="typing-indicator" class="px-2 text-warning small" style="height: 20px;"></div>
                 <div class="card-footer border-secondary d-flex">
                     <input type="text" id="msg-input" class="form-control bg-secondary text-white border-0 me-2" placeholder="Message...">
                     <button id="btn-send" class="btn btn-primary">Envoyer</button>
@@ -61,25 +72,19 @@
     </div>
     
     <br>
-
-    <!-- BARRE DE RECHERCHE AMINE-->
+    <!-- BARRE DE RECHERCHE AMINE (CONSERVÉE) -->
     <div class="card bg-dark border-secondary">
-
         <div class="card-body">
-            <form id="search-form" class="row g-4">
+            <h5 class="card-title">Recherche YouTube (Amine)</h5>
+            <form id="search-form" class="row g-2">
                 <div class="col-10">
-                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher sur YouTube"  required>
+                    <input type="text" id="search-input" class="form-control bg-secondary text-white border-0" placeholder="Rechercher sur YouTube..." required>
                 </div>
                 <div class="col-2">
-                    <button type="submit" id="recherche" class="btn btn-primary w-100"> 
-                        <i class="fa fa-search"></i>
-                    </button>
+                    <button type="submit" class="btn btn-primary w-100"><i class="fa fa-search"></i></button>
                 </div>
             </form>
-
-            <div id="results-container" class="row mt-3 g-3">
-                <!-- Les vidéos s'afficheront ici via JS -->
-            </div>
+            <div id="results-container" class="row mt-3 g-3"></div>
         </div>
     </div>
 </div>
@@ -87,82 +92,135 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-
-    // 1. Récupérer les infos depuis l'URL (ex: ?room=123456&user=Adam)
     const params = new URLSearchParams(window.location.search);
     const roomCode = params.get('room');
     const username = params.get('user');
-
-    // Si pas d'infos, retour à l'accueil
-    if (!roomCode || !username) {
-        window.location.href = '/';
-    }
-
+    
+    if (!roomCode || !username) window.location.href = '/';
     document.getElementById('display-code').textContent = roomCode;
-
-    // 2. Se connecter au salon
+    
     socket.emit('join_room', { roomCode, username });
 
-    // --- GESTION CHAT & USERS ---
+    // --- API YOUTUBE ---
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    var player;
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            height: '100%',
+            width: '100%',
+            videoId: 'M7lc1UVf-VE', // Vidéo par défaut
+            playerVars: { 'autoplay': 0, 'controls': 1 },
+            events: {
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
+
+    // --- 2. LOGIQUE POUR LE CHAMP ID MANUEL (AJOUT) ---
+    const manualInput = document.getElementById('manual-id-input');
+    const manualBtn = document.getElementById('btn-manual-load');
+
+    manualBtn.addEventListener('click', () => {
+        const id = manualInput.value.trim();
+        if(id) {
+            // On envoie l'ID au serveur pour que tout le monde change de vidéo
+            socket.emit('change_video', { roomCode, videoId: id });
+            manualInput.value = '';
+        }
+    });
+
+    // Quand le serveur dit de changer la vidéo
+    socket.on('load_video', (videoId) => {
+        if (player && player.loadVideoById) {
+            player.loadVideoById(videoId);
+        }
+    });
+
+    // --- SYNCHRONISATION (PLAY/PAUSE) ---
+    let currentController = null;
+    let isSyncing = false;
+
+    document.getElementById('btn-control').addEventListener('click', () => {
+        socket.emit('claim_control', { roomCode, username });
+    });
+
+    socket.on('update_controller', (name) => {
+        currentController = name;
+        document.getElementById('controller-name').textContent = name;
+    });
+
+    function onPlayerStateChange(event) {
+        if (currentController === username && !isSyncing) {
+            let state = event.data;
+            let time = player.getCurrentTime();
+
+            if (state === YT.PlayerState.PLAYING) {
+                socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
+            } else if (state === YT.PlayerState.PAUSED) {
+                socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
+            }
+        }
+    }
+
+    socket.on('sync_video', (data) => {
+        if (!player || !player.seekTo) return;
+        
+        isSyncing = true;
+        if (Math.abs(player.getCurrentTime() - data.currentTime) > 1) {
+            player.seekTo(data.currentTime);
+        }
+        if (data.type === 'play') player.playVideo();
+        else if (data.type === 'pause') player.pauseVideo();
+        
+        setTimeout(() => { isSyncing = false; }, 500);
+    });
+
+    // --- CHAT & USERS (CONSERVÉ) ---
     const chatBox = document.getElementById('chat-box');
     const usersList = document.getElementById('users-list');
     const msgInput = document.getElementById('msg-input');
     const typingIndicator = document.getElementById('typing-indicator');
 
-    // Mise à jour de la liste des utilisateurs
     socket.on('update_users', (users) => {
         usersList.innerHTML = users.map(u => `<li><span style="color:#0f0;">●</span> ${u.username}</li>`).join('');
     });
 
-    // Réception d'un message
     socket.on('receive_message', (data) => {
         const div = document.createElement('div');
-        
         if (data.isSystem) {
-            // Message système (Connexion/Déconnexion)
             div.className = 'system-msg';
             div.textContent = data.text;
         } else {
-            // Message utilisateur normal
             div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
         }
-        
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // Envoi d'un message
     function sendMessage() {
         if (msgInput.value.trim()) {
-            // CORRECTION ICI : on utilise bien 'text'
             socket.emit('send_message', { roomCode, username, text: msgInput.value });
             msgInput.value = '';
         }
     }
-
     document.getElementById('btn-send').addEventListener('click', sendMessage);
     msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
 
-    // --- GESTION DU "EN TRAIN D'ÉCRIRE" ---
     let typingTimer;
-
-    msgInput.addEventListener('input', () => {
-        socket.emit('typing', { roomCode, username });
-    });
-
-    socket.on('user_typing', (userTyping) => {
-        typingIndicator.textContent = `${userTyping} est en train d'écrire...`;
-        
+    msgInput.addEventListener('input', () => socket.emit('typing', { roomCode, username }));
+    socket.on('user_typing', (u) => {
+        typingIndicator.textContent = `${u} écrit...`;
         clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => {
-            typingIndicator.textContent = '';
-        }, 3000);
+        typingTimer = setTimeout(() => typingIndicator.textContent = '', 3000);
     });
 
-    // BARRE DE RECHERCHE YOUTUBE AMINE
+    // --- RECHERCHE YOUTUBE (Amine) ---
     const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
     const API_URL = "https://www.googleapis.com/youtube/v3/search";
-
     const form = document.getElementById('search-form');
     const input = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
@@ -172,48 +230,31 @@
         const title = video.snippet.title;
         const thumbnailUrl = video.snippet.thumbnails.high.url;
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
         return `
             <div class="col-md-4 mb-3">
                 <div class="card h-100 bg-dark border-secondary text-white">
                     <a href="${videoUrl}" target="_blank" class="text-decoration-none text-white">
                         <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
-                        <div class="card-body p-2">
-                            <p class="card-text small text-truncate">${title}</p>
-                        </div>
+                        <div class="card-body p-2"><p class="card-text small text-truncate">${title}</p></div>
                     </a>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
-
     function renderResults(items) {
         if(!items) return;
-        const htmlContent = items.map(videoRecherchee).join('');
-        resultsContainer.innerHTML = htmlContent;
+        resultsContainer.innerHTML = items.map(videoRecherchee).join('');
     }
-
     async function rechercheYoutubeVideos(recherche) {
-        const params = new URLSearchParams({
-            part: 'snippet',
-            q: recherche, 
-            key: apiKey,
-            type: 'video',
-            maxResults: 30
-        });
-
-        // await pour attendre la réponse réseau
-        const response = await fetch(`${API_URL}?${params.toString()}`);
-
-        // await pour le parsing JSON
-        const data = await response.json();
-        renderResults(data.items);
+        const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
+        try {
+            const res = await fetch(`${API_URL}?${params.toString()}`);
+            const data = await res.json();
+            renderResults(data.items);
+        } catch(e) { console.error(e); }
     }
-
-    form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const searchTerm = input.value.trim();
-        rechercheYoutubeVideos(searchTerm);
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        rechercheYoutubeVideos(input.value.trim());
     });
 
 </script>
