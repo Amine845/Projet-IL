@@ -29,6 +29,13 @@
             <div class="bg-black d-flex align-items-center justify-content-center" style="height: 500px; border: 1px solid #444;">
                 <h4 class="text-muted">Lecteur Vidéo (Bientôt)</h4>
             </div>
+            
+            <div class="d-flex justify-content-end mb-4">
+                <button id="add-current-video-btn" class="btn btn-success" title="Ajouter la vidéo en cours à la playlist">
+                    <i class="fas fa-plus-circle"></i> Ajouter à la Playlist
+                </button>
+            </div>
+
         </div>
         <!-- Colonne Droite : Chat & Users -->
         <div class="col-md-4">
@@ -152,7 +159,7 @@
         }, 3000);
     });
 
-    // --- BARRE DE RECHERCHE YOUTUBE (Code d'Amine) ---
+    // BARRE DE RECHERCHE YOUTUBE AMINE
     const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
     const API_URL = "https://www.googleapis.com/youtube/v3/search";
 
@@ -192,17 +199,15 @@
             q: recherche, 
             key: apiKey,
             type: 'video',
-            maxResults: 12
+            maxResults: 30
         });
 
-        try {
-            const response = await fetch(`${API_URL}?${params.toString()}`);
-            if(!response.ok) throw new Error("Erreur API");
-            const data = await response.json();
-            renderResults(data.items);
-        } catch(e) {
-            console.error(e);
-        }
+        // await pour attendre la réponse réseau
+        const response = await fetch(`${API_URL}?${params.toString()}`);
+
+        // await pour le parsing JSON
+        const data = await response.json();
+        renderResults(data.items);
     }
 
     form.addEventListener('submit', (event) => {
