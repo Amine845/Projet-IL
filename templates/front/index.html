@@ -5,13 +5,29 @@
     <meta charset="UTF-8">
     <title>StreamSquad - Accueil</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/templates/CSS/style.css" rel="stylesheet" type="text/css">
     <style> body { background-color: #222; color: white; } </style>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/templates/src/js/index.js"></script>
+    <style>
+        .center-position {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+        }
+
+        .floating-frame{
+            background-color: rgb(0, 0, 0, .2);
+            border-radius: 10px;
+            box-shadow: black 0px 0px 20px ;
+        }
+
+        .form-control {
+            background-color: #e3f0ff;
+            border: black;
+        }
+    </style>
 </head>
-<body onload="init_index">
+<body>
 <div class=" text-center center-position col-md-7">
     <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 500px;">
         <h1 class="text-primary mb-4 ">StreamSquad</h1>
@@ -33,7 +49,35 @@
     </div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const usernameInput = document.getElementById('username');
 
+    // 1. CRÉER : On demande un code au serveur
+    document.getElementById('btn-create').addEventListener('click', () => {
+        const user = usernameInput.value;
+        if(!user) return alert("Pseudo requis !");
+        
+        socket.emit('request_create_room');
+    });
 
+    // Le serveur nous donne un code -> on redirige
+    socket.on('room_created', (code) => {
+        const user = usernameInput.value;
+        // Redirection vers room.html avec paramètres dans l'URL
+        window.location.href = `/room?room=${code}&user=${user}`;
+    });
+
+    // 2. REJOINDRE : On redirige directement si on a le code
+    document.getElementById('btn-join').addEventListener('click', () => {
+        const user = usernameInput.value;
+        const code = document.getElementById('room-code').value;
+        
+        if(!user || !code) return alert("Pseudo et Code requis !");
+        
+        window.location.href = `/room?room=${code}&user=${user}`;
+    });
+</script>
 </body>
 </html>
