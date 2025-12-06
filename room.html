@@ -297,23 +297,25 @@
 
 
     function renderResults(items) {
-        if(!items) return;
+        if (!items) return;
+
         resultsContainer.innerHTML = items.map(videoRecherchee).join('');
+
+        // Scroll automatique vers les résultats
+        resultsContainer.scrollIntoView({ behavior: "smooth" });
 
         document.querySelectorAll('.video-result').forEach(card => {
             card.addEventListener('click', () => {
                 const videoId = card.dataset.videoId;
 
-                // Envoie l'ordre au serveur
                 socket.emit('change_video', { roomCode, videoId });
 
-                // Optionnel : scroll vers le lecteur
+                // Scroll vers le lecteur après clique
                 document.getElementById('player-container').scrollIntoView({ behavior: "smooth" });
             });
         });
-
-
     }
+
     async function rechercheYoutubeVideos(recherche) {
         const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
         try {
