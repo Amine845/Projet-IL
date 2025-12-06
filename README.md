@@ -1,3 +1,8 @@
+résoudre bug push:
+git pull origin main --rebase
+
+
+
 # Projet-IL
 Projet IL - L3 Informatique
 
