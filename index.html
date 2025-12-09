@@ -36,12 +36,13 @@
             <div class="">
                 <input type="text" id="username" class="form-control mb-3" placeholder="Votre pseudo">
                 
-                
-                
-                <div class="input-group mb-3">
+                <div class="input-group mb-2">
                     <input type="text" id="room-code" class="form-control" placeholder="Code salon">
                     <button id="btn-join" class="btn btn-success">Rejoindre</button>
                 </div>
+                
+                <!-- Zone pour message d'erreur -->
+                <div id="error-msg" class="text-danger mb-3" style="min-height: 24px;"></div>
 
                 <button id="btn-create" class="btn btn-primary w-100">Créer un salon</button>
             </div>
@@ -53,30 +54,57 @@
 <script>
     const socket = io();
     const usernameInput = document.getElementById('username');
+    const roomCodeInput = document.getElementById('room-code');
+    const errorMsg = document.getElementById('error-msg');
 
-    // 1. CRÉER : On demande un code au serveur
+    // Sauvegarde pseudo (Optionnel, pratique pour les tests)
+    const savedUser = localStorage.getItem('streamSquad_user');
+    if(savedUser) usernameInput.value = savedUser;
+
+    // Création
     document.getElementById('btn-create').addEventListener('click', () => {
-        const user = usernameInput.value;
-        if(!user) return alert("Pseudo requis !");
-        
+        const user = usernameInput.value.trim();
+        if(!user) {
+            errorMsg.textContent = "Pseudo requis !";
+            return;
+        }
+        localStorage.setItem('streamSquad_user', user);
         socket.emit('request_create_room');
     });
 
-    // Le serveur nous donne un code -> on redirige
     socket.on('room_created', (code) => {
         const user = usernameInput.value;
-        // Redirection vers room.html avec paramètres dans l'URL
         window.location.href = `/room?room=${code}&user=${user}`;
     });
 
-    // 2. REJOINDRE : On redirige directement si on a le code
+    // Rejoindre
     document.getElementById('btn-join').addEventListener('click', () => {
-        const user = usernameInput.value;
-        const code = document.getElementById('room-code').value;
+        const user = usernameInput.value.trim();
+        const code = roomCodeInput.value.trim();
         
-        if(!user || !code) return alert("Pseudo et Code requis !");
-        
-        window.location.href = `/room?room=${code}&user=${user}`;
+        errorMsg.textContent = ""; // Reset erreur
+
+        if(!user || !code) {
+            errorMsg.textContent = "Pseudo et Code requis !";
+            return;
+        }
+        localStorage.setItem('streamSquad_user', user);
+
+        // On demande au serveur si ça existe
+        socket.emit('check_room_existence', code);
+    });
+
+    // Le serveur répond
+    socket.on('room_existence_result', (data) => {
+        if (data.exists) {
+            // Ça existe -> Redirection
+            const user = usernameInput.value;
+            const code = roomCodeInput.value;
+            window.location.href = `/room?room=${code}&user=${user}`;
+        } else {
+            // Ça n'existe pas -> Erreur
+            errorMsg.textContent = "Ce salon n'existe pas";
+        }
     });
 </script>
 </body>

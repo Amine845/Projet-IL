@@ -1,0 +1,25 @@
+sudo apt-get update && sudo apt-get install postgresql postgresql-contrib -y
+sudo service postgresql start
+
+sudo su
+
+su - postgres -c "psql -c \"CREATE USER uapv2401716 WITH PASSWORD 'QjBchY';\""
+su - postgres -c "psql -c \"CREATE DATABASE etd;\""
+su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE etd TO uapv2401716;\""
+su - postgres -c "psql -d etd -c \"GRANT ALL ON SCHEMA public TO uapv2401716;\""
+
+exit
+
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -f tables.sql
+
+#copier d'un coup :
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "
+INSERT INTO \"user\" (username, password, role) VALUES ('AdminTest', '12345', 'admin');
+INSERT INTO room (name, password, host_id) VALUES ('Salon de Test', NULL, 1);
+INSERT INTO playlist (room_id, video_count) VALUES (1, 1);
+INSERT INTO video (\"URL\", title, playlist_id) VALUES ('dQw4w9WgXcQ', 'Never Gonna Give You Up', 1);
+"
+
+#si pas déjà fait avant : npm install
+
+node control/server.js

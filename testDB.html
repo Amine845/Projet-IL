@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualisation Salles & Utilisateurs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white p-5">
+
+    <div class="container">
+        <h1 class="mb-4 text-warning">État de la Base de Données</h1>
+        
+        <div class="d-flex justify-content-between mb-3">
+            <p>Liste des utilisateurs actuellement enregistrés dans les salles (SQL).</p>
+            <button id="btn-refresh" class="btn btn-primary">Actualiser</button>
+        </div>
+
+        <div class="card bg-secondary border-0">
+            <div class="card-body">
+                <table class="table table-dark table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID Salle (Room Code)</th>
+                            <th>Pseudo Utilisateur</th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-content">
+                        <!-- Les données arriveront ici -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tbody = document.getElementById('db-content');
+        const btn = document.getElementById('btn-refresh');
+
+        async function loadData() {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center">Chargement...</td></tr>';
+            
+            try {
+                // Appel à l'API créée dans server.js
+                const response = await fetch('/api/rooms-users');
+                const data = await response.json();
+
+                tbody.innerHTML = ''; // Vider
+
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2" class="text-center text-light">Aucune donnée (Personne n\'est connecté ou BDD vide)</td></tr>';
+                    return;
+                }
+
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="fw-bold text-info">${row.room_id}</td>
+                        <td>${row.username}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Erreur de connexion API</td></tr>';
+            }
+        }
+
+        // Charger au démarrage et au clic
+        loadData();
+        btn.addEventListener('click', loadData);
+    </script>
+</body>
+</html>
+
+<!-- Ajouter "testDB.html" à la fin de l'url racine pour y acceder -->

@@ -1,3 +1,10 @@
+DROP TABLE IF EXISTS video CASCADE;
+DROP TABLE IF EXISTS playlist CASCADE;
+DROP TABLE IF EXISTS room CASCADE;
+DROP TABLE IF EXISTS "user" CASCADE;
+
+-- ________________________________________________________ --
+
 CREATE TABLE "user" (
     -- Clé Primaire : ID de l'utilisateur (auto-incrémenté)
                         user_id SERIAL PRIMARY KEY,
@@ -9,7 +16,10 @@ CREATE TABLE "user" (
                         password TEXT NOT NULL,
 
     -- Rôle de l'utilisateur (ex: 'admin', 'membre', 'hôte')
-                        role VARCHAR(20) DEFAULT 'membre'
+                        role VARCHAR(20) DEFAULT 'membre',
+
+    -- Pour savoir dans quelle salle est l'utilisateur
+                        current_room_id INTEGER
 );
 
 CREATE TABLE room (
