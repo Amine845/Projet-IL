@@ -22,11 +22,11 @@
         }
 
         .floating-frame {
-            background-color: rgb(0, 0, 0, .2);
+            /*background-color: rgb(0, 0, 0, .2);*/
             border-radius: 10px;
             box-shadow: black 0px 0px 20px;
+            backdrop-filter: blur(3.5px);
         }
-
         .form-control {
             background-color: #e3f0ff;
             border: black;
@@ -57,7 +57,7 @@
     </style>
 </head>
 
-<body>
+<body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
     <nav id="login-nav" class="floating-frame nav-flex p-3">
         <button href="/" id="access-index" class="btn btn-warning js-access-button">CONTINUER SANS COMPTE</button>
         <button href="/signup" id="access-signup" class="btn btn-success js-access-button">S'INSCRIRE</button>

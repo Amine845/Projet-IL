@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #222;
+            background-color: rgb(53, 51, 50);
             color: white;
         }
     </style>
@@ -22,10 +22,13 @@
         }
 
         .floating-frame {
-            background-color: rgb(0, 0, 0, .2);
+            /*background-color: rgb(0, 0, 0, .2);*/
             border-radius: 10px;
             box-shadow: black 0px 0px 20px;
+            backdrop-filter: blur(5px);
         }
+
+        
 
         .form-control {
             background-color: #e3f0ff;
@@ -57,7 +60,7 @@
     </style>
 </head>
 
-<body>
+<body style="background-image: url(/templates/src/background2.png);background-size: 120%;">
     <nav id="login-nav" class="floating-frame nav-flex p-3">
         <button href="/" id="access-index" class="btn btn-warning js-access-button">CONTINUER SANS COMPTE</button>
         <button href="/login" id="access-login" class="btn btn-success js-access-button">SE CONNECTER</button>
