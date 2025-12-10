@@ -11,8 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.js"></script>
     <style> 
         body { background-color: rgb(53, 51, 50); color: white; } 
-        .chat-container { height: 400px; display: flex; flex-direction: column; }
-        .chat-messages { flex-grow: 1; overflow-y: auto; background: #333; padding: 10px; }
+        .chat-container { display: flex; flex-direction: column; flex-grow: initial; min-height: 250px;}
+        .chat-messages {flex-grow: 1; overflow-y: auto; background: #33333300; padding: 8px; }
         .system-msg { font-style: italic; color: #aaa; font-size: 0.9em; text-align: center; margin: 5px 0; }
         
         /* Conteneur responsive pour YouTube */
@@ -32,7 +32,7 @@
             /*background-color: rgb(0, 0, 0, .2);*/
             border-radius: 10px;
             box-shadow: black 0px 0px 20px;
-            backdrop-filter: blur(3.5px);
+            backdrop-filter: blur(6px);
         }
 
         .form-control {
@@ -40,6 +40,33 @@
             border: black;
         }
     
+        .card {
+            background-color: transparent;
+            border-radius: 10px;
+            border: 0px;
+            
+        }
+
+        .card-header {
+            
+            border-radius: 10px;
+            border: 0px;
+        }
+
+        .liquid {
+            backdrop-filter: blur(6px);
+        }
+
+        .smoke {
+            background-color: rgba(172, 172, 172, 0.199);
+        }
+
+        .force-shadow {
+            box-shadow: black 0px 0px 20px;
+        }
+        .force-corner {
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
@@ -86,51 +113,46 @@
 
 
         <!-- Onglets  Clavardage / Liste utilisateurs -->
-        <div class="col-md-4 ">
-            <div class="floating-frame" !--Un div de mise en forme>
-                <nav >
-                    <div class="col-md-20 nav nav-tabs" id="nav-tab" role="tablist">
-                        <button class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#show-chat" type="button" role="tab" aria-controls="show-chat" aria-selected="true">Clavardage</button>
-                        <button class="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#show-users" type="button" role="tab" aria-controls="show-users" aria-selected="false">Utilisateurs en ligne</button>
-                    </div>
-                </nav>
+        <div class="col-md-4" >
+            <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;"  !--Un div de mise en forme>
+                <div class="nav nav-tabs d-flex input-group card-header" style="border-radius: 0px 5px;" id="nav-tab" role="tablist">
+                    <button style="width: 50%;" class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#show-chat" type="button">Clavardage</button>
+                    <button style="width: 50%;" class="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#show-users" type="button">Utilisateurs en ligne</button>
+                </div>
 
 
                 <!-- Liste Users -->
-                <div class="tab-content">
-                    <div id="show-users" class=" tab-pane" role="tabpanel" aria-labelledby="show-users-tab">
-                        <div id="show-users" class=" chat-container card p-2 border border-secondary rounded bg-dark text-white role="tabpanel" aria-labelledby="show-users-tab">
-                            <h6 class="text-muted small mb-2" >Utilisateurs en ligne :</h6>
-                            <ul id="users-list" class="list-unstyled mb-0" style="max-height: 80px; overflow-y: auto;"></ul>
-                        </div>
+                <div class="tab-content" style="height: 100%;">
+                    <div id="show-users" class="tab-pane text-white chat-container"style="height: 100%;">
+                        <ul id="users-list" class="list-unstyled mb-0" style="overflow-y: auto;"></ul>
                     </div>
 
                     <!-- Chat -->
-                    <div id="show-chat" class="show active tab-pane" role="tabpanel" aria-labelledby="show-chat-tab">
-                        <div class="card bg-dark text-white border-secondary chat-container">
-                            <div id="chat-box" class="chat-messages"></div>
-                            <div id="typing-indicator" class="px-2 text-warning small" style="height: 20px;"></div>
-                            <div class="card-footer border-secondary d-flex">
-                                <input type="text" id="msg-input" class="form-control bg-secondary text-white border-0 me-2" placeholder="Message...">
+                    <div id="show-chat" class="show active tab-pane " style="width: 100%;height: 100%">
+                        <div class="text-white chat-container card" style="display: flex;width: 100%;height: 100%">
+                            <div id="chat-box" class="chat-messages" style="flex: 1 0 0;"></div>
+                            <div id="typing-indicator" class="text-warning small" style="height: 20px;"></div>
+                            <div class="card-footer input-group">
+                                <input type="text" id="msg-input" class="form-control smoke" placeholder="Message...">
                                 <button id="btn-send" class="btn btn-primary">Envoyer</button>
                             </div>
                         </div>
+                            
                     </div>
                 </div>
             </div>
         </div>
     </div>
-        <br>
-    <div class="d-flex justify-content-end mb-4">
-        <button id="add-current-video-btn" class="btn btn-success" title="Ajouter la vidéo en cours à la playlist">
-            <i class="fa fa-refresh"></i> Ajouter à la Playlist
-        </button>
-    </div>
+</br>
+
 
     <!-- PLAYLIST -->
-    <div class="card bg-dark text-white border-secondary mb-3">
-        <div class="card-header border-secondary bg-secondary text-white">
-            <h6 class="mb-0"><i class="fas fa-list"></i> Playlist en attente</h6>
+    <div class="card text-white border-secondary mb-3">
+        <div class="card-header border-secondary text-white smoke liquid" style="display: inline-flex;">
+            <h6 class="card-title"><i class="fas fa-list"></i> Playlist en attente</h6>
+            <button id="add-current-video-btn" class="btn btn-success card-header liquid"   style="position: fixed; right: 20px;" title="Ajouter la vidéo en cours à la playlist">
+            <i class="fa fa-refresh"></i> Ajouter à la Playlist
+            </button>
         </div>
         <ul id="playlist-list" class="list-group list-group-flush bg-dark" style="max-height: 200px; overflow-y: auto;">
             <li class="list-group-item bg-dark text-muted text-center small border-secondary">
@@ -170,7 +192,7 @@
         player = new YT.Player('player', {
             height: '100%',
             width: '100%',
-            videoId: '2wMxldl3Alk', // Vidéo par défaut
+            videoId: '3y5H4XINDEU', // Vidéo par défaut
             playerVars: { 'autoplay': 0, 'controls': 1 },
             events: {
                 'onStateChange': onPlayerStateChange

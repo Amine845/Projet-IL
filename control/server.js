@@ -20,13 +20,14 @@ const pool = new Pool({
 
 // --- CHEMINS ---
 const cheminRacine = path.join(__dirname, '../');
+const cheminVues = path.join(__dirname, '../templates/front/');
 app.use(express.static(cheminRacine));
 
-app.get('/', (req, res) => res.sendFile(path.join(cheminRacine, 'index.html')));
-app.get('/room', (req, res) => res.sendFile(path.join(cheminRacine, 'room.html')));
+app.get('/', (req, res) => res.sendFile(path.join(cheminVues, 'index.html')));
+app.get('/room', (req, res) => res.sendFile(path.join(cheminVues, 'room.html')));
 app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'testDB.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(cheminRacine, 'templates/front/login.html')));
-app.get('/signup', (req, res) => res.sendFile(path.join(cheminRacine, 'templates/front/signup.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(cheminVues, 'login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(cheminVues, 'signup.html')));
 
 // --- VARIABLES (Pour Socket.io) ---
 // On garde ça pour la fluidité du temps réel, la BDD sert de stockage
