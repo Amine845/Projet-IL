@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.js"></script>
     <style> 
-        body { background-color: #222; color: white; } 
+        body { background-color: white; color: white; } 
         .chat-container { height: 400px; display: flex; flex-direction: column; }
         .chat-messages { flex-grow: 1; overflow-y: auto; background: #333; padding: 10px; }
         .system-msg { font-style: italic; color: #aaa; font-size: 0.9em; text-align: center; margin: 5px 0; }
@@ -67,14 +67,6 @@
     <div class="row mt-3">
         <!-- Colonne Gauche : Lecteur Vidéo -->
         <div class="col-md-8">
-            
-            <!-- === AJOUT : CHAMP ID MANUEL === -->
-            <div class="input-group mb-2 floating-frame ">
-                <span class="input-group-text bg-secondary text-white border-secondary">ID YouTube</span>
-                <input type="text" id="manual-id-input" class="form-control bg-dark text-white border-secondary" placeholder="ex: dQw4w9WgXcQ">
-                <button class="btn btn-danger" id="btn-manual-load">Charger</button>
-            </div>
-            <!-- ============================== -->
 
             <!-- Infos Contrôleur -->
             <div class="mb-2 d-flex justify-content-between">
@@ -146,6 +138,8 @@
         </ul>
     </div>
 
+
+    <!--    AFFICHAGE DES RESULTATS DE RECHERCHE   -->
     <div class="mb-4">
         <div id="results-container" class="row mt-3 g-3">
     </div>
@@ -153,11 +147,12 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    
     const socket = io();
-    const params = new URLSearchParams(window.location.search);
+    params = new URLSearchParams(window.location.search);
     const roomCode = params.get('room');
     const username = params.get('user');
-    
+
     if (!roomCode || !username) window.location.href = '/';
     document.getElementById('display-code').textContent = roomCode;
     
@@ -174,26 +169,13 @@
         player = new YT.Player('player', {
             height: '100%',
             width: '100%',
-            videoId: 'M7lc1UVf-VE', // Vidéo par défaut
+            videoId: '2wMxldl3Alk', // Vidéo par défaut
             playerVars: { 'autoplay': 0, 'controls': 1 },
             events: {
                 'onStateChange': onPlayerStateChange
             }
         });
     }
-
-    // --- 2. LOGIQUE POUR LE CHAMP ID MANUEL (AJOUT) ---
-    const manualInput = document.getElementById('manual-id-input');
-    const manualBtn = document.getElementById('btn-manual-load');
-
-    manualBtn.addEventListener('click', () => {
-        const id = manualInput.value.trim();
-        if(id) {
-            // On envoie l'ID au serveur pour que tout le monde change de vidéo
-            socket.emit('change_video', { roomCode, videoId: id });
-            manualInput.value = '';
-        }
-    });
 
     // Quand le serveur dit de changer la vidéo
     socket.on('load_video', (videoId) => {
@@ -280,33 +262,52 @@
         typingTimer = setTimeout(() => typingIndicator.textContent = '', 3000);
     });
 
-    // --- RECHERCHE YOUTUBE (Amine) ---
     const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
     const API_URL = "https://www.googleapis.com/youtube/v3/search";
     const form = document.getElementById('search-form');
     const input = document.getElementById('search-input');
     const playlistList = document.getElementById('playlist-list');
     const resultsContainer = document.getElementById('results-container');
+    let playlist = [];
 
     function videoRecherchee(video) {
         const videoId = video.id.videoId;
         const title = video.snippet.title;
         const thumbnailUrl = video.snippet.thumbnails.high.url;
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
         return `
             <div class="col-md-4 mb-3">
-                <div class="card h-100 bg-dark border-secondary text-white">
-                    <a href="${videoUrl}" target="_blank" class="text-decoration-none text-white">
-                        <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
-                        <div class="card-body p-2"><p class="card-text small text-truncate">${title}</p></div>
-                    </a>
+                <div class="card h-100 bg-dark border-secondary text-white video-result" 
+                    data-video-id="${videoId}" style="cursor:pointer;">
+                    <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
+                    <div class="card-body p-2">
+                        <p class="card-text small text-truncate">${title}</p>
+                    </div>
                 </div>
             </div>`;
     }
+
+
     function renderResults(items) {
-        if(!items) return;
+        if (!items) return;
+
         resultsContainer.innerHTML = items.map(videoRecherchee).join('');
+
+        // Scroll automatique vers les résultats
+        resultsContainer.scrollIntoView({ behavior: "smooth" });
+
+        document.querySelectorAll('.video-result').forEach(card => {
+            card.addEventListener('click', () => {
+                const videoId = card.dataset.videoId;
+
+                socket.emit('change_video', { roomCode, videoId });
+
+                // Scroll vers le lecteur après clique
+                document.getElementById('player-container').scrollIntoView({ behavior: "smooth" });
+            });
+        });
     }
+
     async function rechercheYoutubeVideos(recherche) {
         const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
         try {
@@ -315,29 +316,69 @@
             renderResults(data.items);
         } catch(e) { console.error(e); }
     }
+
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         rechercheYoutubeVideos(input.value.trim());
     });
 
-        // function addToPlaylist(videoId, title, thumbUrl) {
-    //     const videoId = video.id.videoId;
-    //     const title = video.snippet.title;
-    //     const thumbnailUrl = video.snippet.thumbnails.high.url;
-        
-    //     return `
-    //         <div class="d-flex align-items-center">
-    //             <img src="${thumbUrl}" alt="Thumb" style="width: 50px; height: 38px; object-fit: cover; border-radius: 4px;" class="me-3">
-    //             <div style="overflow: hidden;">
-    //                 <div class="fw-bold text-truncate" title="${title}" style="font-size: 0.9rem;">${title}</div>
-    //             </div>
-    //         </div>
-    //         <button class="btn btn-sm btn-outline-danger ms-2" onclick="event.stopPropagation(); this.parentElement.remove();" title="Retirer">
-    //             <i class="fas fa-times"></i>
-    //         </button>
-    //     `;
-    // }
+    function renderPlaylist() {
+    playlistList.innerHTML = "";
 
+    if (playlist.length === 0) {
+        playlistList.innerHTML = `
+            <li class="list-group-item bg-dark text-muted text-center small border-secondary">
+                Aucune vidéo dans la playlist.
+            </li>
+        `;
+        return;
+    }
+
+    playlist.forEach((video, index) => {
+        const li = document.createElement("li");
+        li.className = "list-group-item bg-dark border-secondary text-white d-flex justify-content-between align-items-center";
+        
+        li.innerHTML = `
+            <span style="cursor:pointer;" class="video-play" data-index="${index}">
+                ${video.title}
+            </span>
+            <button class="btn btn-sm btn-outline-danger remove-video" data-index="${index}">X</button>
+        `;
+
+        playlistList.appendChild(li);
+    });
+
+    // Click sur une vidéo → la jouer
+    document.querySelectorAll(".video-play").forEach(el => {
+        el.addEventListener("click", () => {
+            const v = playlist[el.dataset.index];
+            socket.emit("change_video", { roomCode, videoId: v.id });
+        });
+    });
+
+    // Suppression
+    document.querySelectorAll(".remove-video").forEach(btn => {
+        btn.addEventListener("click", () => {
+            playlist.splice(btn.dataset.index, 1);
+            renderPlaylist();
+        });
+    });
+    }
+
+    function addVideoToPlaylist(videoId, title) {
+    playlist.push({ id: videoId, title: title });
+    renderPlaylist();
+    }
+
+    document.getElementById("add-current-video-btn").addEventListener("click", () => {
+        if (!player || !player.getVideoData) return;
+
+        const data = player.getVideoData();
+        const id = data.video_id;
+        const title = data.title || "Vidéo sans titre";
+
+        addVideoToPlaylist(id, title);
+    });
 
 </script>
 </body>
