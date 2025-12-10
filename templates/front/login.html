@@ -87,68 +87,14 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const usernameInput = document.getElementById('username');
-        const roomCodeInput = document.getElementById('room-code');
-        const errorMsg = document.getElementById('error-msg');
-
-        // Sauvegarde pseudo (Optionnel, pratique pour les tests)
-        const savedUser = localStorage.getItem('streamSquad_user');
-        if (savedUser) usernameInput.value = savedUser;
-
-        // Création
-        document.getElementById('btn-create').addEventListener('click', () => {
-            const user = usernameInput.value.trim();
-            if (!user) {
-                errorMsg.textContent = "Pseudo requis !";
-                return;
-            }
-            localStorage.setItem('streamSquad_user', user);
-            socket.emit('request_create_room');
-        });
-
-        socket.on('room_created', (code) => {
-            const user = usernameInput.value;
-            window.location.href = `/room?room=${code}&user=${user}`;
-        });
-
 
         // Aller sur n'importe quelle page depuis un href
         const js_access_button = Object.values(document.getElementsByClassName('js-access-button'));
         js_access_button.forEach(element => {
+            
             element.addEventListener('click', (event) =>{
                 window.location.href = element.getAttribute("href");
             });
-        });
-
-
-        // Rejoindre
-        document.getElementById('btn-join').addEventListener('click', () => {
-            const user = usernameInput.value.trim();
-            const code = roomCodeInput.value.trim();
-
-            errorMsg.textContent = ""; // Reset erreur
-
-            if (!user || !code) {
-                errorMsg.textContent = "Pseudo et Code requis !";
-                return;
-            }
-            localStorage.setItem('streamSquad_user', user);
-
-            // On demande au serveur si ça existe
-            socket.emit('check_room_existence', code);
-        });
-
-        // Le serveur répond
-        socket.on('room_existence_result', (data) => {
-            if (data.exists) {
-                // Ça existe -> Redirection
-                const user = usernameInput.value;
-                const code = roomCodeInput.value;
-                window.location.href = `/room?room=${code}&user=${user}`;
-            } else {
-                // Ça n'existe pas -> Erreur
-                errorMsg.textContent = "Ce salon n'existe pas";
-            }
         });
     </script>
 </body>
