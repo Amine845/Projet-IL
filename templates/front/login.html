@@ -46,6 +46,21 @@
             white-space: nowrap;
         }
 
+        .liquid {
+            backdrop-filter: blur(6px);
+        }
+
+        .smoke {
+            background-color: rgba(172, 172, 172, 0.199);
+        }
+
+        .force-shadow {
+            box-shadow: black 0px 0px 20px;
+        }
+        .force-corner {
+            border-radius: 10px;
+        }
+
         #login-nav {
             position: fixed;
             left: 95%;
@@ -57,7 +72,7 @@
 </head>
 
 <body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
-    <nav id="login-nav" class="floating-frame nav-flex p-3">
+    <nav id="login-nav" class="floating-frame nav-flex p-2">
         <div class="input-group">
             <button href="/" id="access-index" class="btn btn-warning js-access-button">CONTINUER SANS COMPTE</button>
             <button href="/signup" id="access-signup" class="btn btn-success js-access-button">S'INSCRIRE</button>

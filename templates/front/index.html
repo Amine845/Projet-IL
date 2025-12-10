@@ -47,6 +47,22 @@
             white-space: nowrap;
         }
 
+
+        .liquid {
+            backdrop-filter: blur(6px);
+        }
+
+        .smoke {
+            background-color: rgba(172, 172, 172, 0.199);
+        }
+
+        .force-shadow {
+            box-shadow: black 0px 0px 20px;
+        }
+        .force-corner {
+            border-radius: 10px;
+        }
+
         #login-nav {
             position: fixed;
             left: 95%;
@@ -54,12 +70,13 @@
             transform: translate(-100%, 0%);
             height: 50px;
         }
+        
     </style>
 </head>
 
 <body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
-    <nav id="login-nav" class="floating-frame nav-flex p-3">
-        <div class="input-group">
+    <nav id="login-nav" class="floating-frame nav-flex p-2">
+        <div class="input-group" >
             <button href="/signup" id="access-signup" class="floating-frame btn btn-warning js-access-button">S'INSCRIRE</button>
             <button href="/login" id="access-login" class="btn btn-success js-access-button">SE CONNECTER</button>
         </div>
