@@ -40,10 +40,9 @@
         }
 
         .nav-flex>* {
-            margin-inline: 2px;
             /*height: 30px;
             width: 140px;*/
-            display: inline-block;
+            display: inline-table;
             white-space: nowrap;
         }
 
@@ -59,8 +58,10 @@
 
 <body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
     <nav id="login-nav" class="floating-frame nav-flex p-3">
-        <button href="/" id="access-index" class="btn btn-warning js-access-button">CONTINUER SANS COMPTE</button>
-        <button href="/signup" id="access-signup" class="btn btn-success js-access-button">S'INSCRIRE</button>
+        <div class="input-group">
+            <button href="/" id="access-index" class="btn btn-warning js-access-button">CONTINUER SANS COMPTE</button>
+            <button href="/signup" id="access-signup" class="btn btn-success js-access-button">S'INSCRIRE</button>
+        </div>
     </nav>
     <div class=" text-center center-position col-md-7">
         <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 500px;">
