@@ -22,34 +22,58 @@
         }
 
         .floating-frame {
-            background-color: rgb(0, 0, 0, .2);
+            /*background-color: rgb(0, 0, 0, .2);*/
             border-radius: 10px;
             box-shadow: black 0px 0px 20px;
+            backdrop-filter: blur(3.5px);
         }
 
         .form-control {
             background-color: #e3f0ff;
             border: black;
         }
+
+        .nav-flex {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .nav-flex>* {
+            margin-inline: 2px;
+            /*height: 30px;
+            width: 140px;*/
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        #login-nav {
+            position: fixed;
+            left: 95%;
+            top: 30px;
+            transform: translate(-100%, 0%);
+            height: 50px;
+        }
     </style>
 </head>
 
 <body>
-    <nav id="login-nav" class="floating-frame pt-2 pb-2 col-md-4" style="">
-         <button href="./templates/front/signup.html" id="access-signup" class="btn btn-warning">S'INSCRIRE</button>
-         <button href="./templates/front/login.html" id="access-login" class="btn btn-success">SE CONNECTER</button>
+    <nav id="login-nav" class="floating-frame nav-flex p-3">
+        <button href="/signup" id="access-signup" class="btn btn-warning js-access-button">S'INSCRIRE</button>
+        <button href="/login" id="access-login" class="btn btn-success js-access-button">SE CONNECTER</button>
     </nav>
-    <div class=" text-center center-position col-md-7">
-        <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 500px;">
+    <div class=" text-center center-position col-md-4">
+        <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 800px;">
             <h1 class="text-primary mb-4 ">StreamSquad</h1>
 
             <div class="row justify-content-center">
                 <div class="">
                     <input type="text" id="username" class="form-control mb-3" placeholder="Votre pseudo">
 
-                    <div class="input-group mb-2">
+                    <div class="input-group mb-2 flex">
                         <input type="text" id="room-code" class="form-control" placeholder="Code salon">
-                        <button id="btn-join" class="btn btn-success">Rejoindre</button>
+                        <button id="btn-join" class="btn btn-success p-1">Rejoindre</button>
                     </div>
 
                     <!-- Zone pour message d'erreur -->
@@ -104,6 +128,16 @@
             // On demande au serveur si ça existe
             socket.emit('check_room_existence', code);
         });
+
+
+        // Aller sur n'importe quelle page depuis un href
+        const js_access_button = Object.values(document.getElementsByClassName('js-access-button'));
+        js_access_button.forEach(element => {
+            element.addEventListener('click', (event) =>{
+                window.location.href = element.getAttribute("href");
+            });
+        });
+
 
         // Le serveur répond
         socket.on('room_existence_result', (data) => {

@@ -25,6 +25,8 @@ app.use(express.static(cheminRacine));
 app.get('/', (req, res) => res.sendFile(path.join(cheminRacine, 'index.html')));
 app.get('/room', (req, res) => res.sendFile(path.join(cheminRacine, 'room.html')));
 app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'testDB.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(cheminRacine, 'templates/front/login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(cheminRacine, 'templates/front/signup.html')));
 
 // --- VARIABLES (Pour Socket.io) ---
 // On garde ça pour la fluidité du temps réel, la BDD sert de stockage
