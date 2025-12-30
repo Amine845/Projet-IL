@@ -16,12 +16,15 @@
 namespace classe;
 
 class user {
+    public $id;
     public $username;
+    public $email;
     public $password;
-    public $user_id;
 
-    public function __construct($username = '', $password = '') {
+    public function __construct($id, $username, $email, $password = null) {
+        $this->id = $id;
         $this->username = $username;
+        $this->email = $email;
         $this->password = $password;
     }
 

@@ -2,7 +2,7 @@
 /**
  * Fichier : register.php
  *
- * Permet l'inscription d'un nouvel utilisateur sur le site ainsi que la création d'un wallet par défaut avec un solde de départ de 1000 €
+ * Permet l'inscription d'un nouvel utilisateur sur le site.
  *
  * @author : EL GANDOUZ Amine
  *
@@ -13,55 +13,24 @@
  * Erreur : Tous les champs sont obligatoires, Cet utilisateur existe déjà, Erreur lors de l'inscription
  */
 
-
-session_start();
-
-if (!isset($_SESSION['crsf'])) {
-    $_SESSION['crsf'] = bin2hex(random_bytes(32));
-}
-
-$racine_path = '../';
-include($racine_path . "templates/front/entete.php");
-
-include_once($racine_path."model/userdb.php");
-include_once($racine_path."model/wallet.php");
-
 use bd\userdb;
-use bd\wallet;
+session_start();
+require_once __DIR__ . '/../model/userdb.php';
 
-$message = "";
+// On vérifie que les données ont été envoyées en POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'];
+    $email = $_POST['email'];
+    $password = $_POST['password'];
 
-if($_SERVER["REQUEST_METHOD"] === "POST"){
-    $email = $_POST['email'] ?? '';
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-
-    if (empty($email) || empty($username) || empty($password)){
-        $message = "<p class='w3-panel w3-red w3-padding'>Tous les champs sont obligatoires.</p>";
-    }
-
-    else{
-        $registerModel = new userdb();
-        if ($registerModel->userExists($email, $username)) {
-            $message = "<p class='w3-panel w3-red w3-padding'>Cet utilisateur existe déjà.</p>";
-        }
-
-        else{
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-            if($registerModel->createUser($email, $username, $hashedPassword)){
-                $walletDB = new Wallet();
-                $walletDB->createDefaultWallet($username);
-
-                $message = "<p class='w3-panel w3-green w3-padding'>Inscription réussie ! Votre portefeuille a été créé. Vous pouvez maintenant vous connecter.</p>";
-            }
-            else{
-                $message = "<p class='w3-panel w3-red w3-padding'>Erreur lors de l'inscription.</p>";
-            }
-        }
+    // Appel au modèle pour insérer en BDD
+    if (UserDB::create($username, $email, $password)) {
+        // Succès : on redirige vers la connexion
+        header('Location: ../templates/front/login.html?msg=success');
+        exit();
+    } else {
+        // Erreur : on revient à l'inscription avec un message
+        header('Location: ../index.html?error=failed');
+        exit();
     }
 }
-
-echo $message;
-include($racine_path."templates/front/inscription_body.php");
-include($racine_path."templates/front/footer.php");

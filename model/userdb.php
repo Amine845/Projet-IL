@@ -7,10 +7,10 @@
  * @author: EL GANDOUZ Amine
  *
  * @method userExists($username) vérifie si l'utilisateur exite dans le BDD
- * @method createUser($username, $hashedPassword) création d'un utilisateur au moment du register
+ * @method create($username, $mail, $hashedPassword) création d'un utilisateur au moment du register
  * @method findUser($username) cherche si l'utilisateur est présent dans la BDD
  * ||
- * Erreur : Retourne null ou false en cas d’échec.
+ * Erreur : Renvoie null ou false en cas d’échec.
  */
 
 namespace bd;
@@ -21,7 +21,9 @@ use \PDO;
 require('../class/user.php');
 
 require('GestionDB.php');
-use bd\GestionDB;
+
+require_once __DIR__ . '/GestionDB.php';
+require_once __DIR__ . '/../class/user.php';
 
 class userdb{
 
@@ -40,13 +42,25 @@ class userdb{
         return $stmt->fetch();
     }
 
-    public function createUser($username, $hashedPassword) {
-        $sql = "INSERT INTO users (username, password) VALUES (:username, :password)";
-        $stmt = $this->db->pdo->prepare($sql);
-        return $stmt->execute([
-            'username' => $username,
-            'password' => $hashedPassword
-        ]);
+    public static function create($username, $email, $password) {
+        $db = GestionDB::connexion();
+        // On hache le mot de passe pour la sécurité
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        $stmt = $db->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+        return $stmt->execute([$username, $email, $hashedPassword]);
+    }
+
+    public static function getByEmail($email) {
+        $db = GestionDB::connexion();
+        $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $row = $stmt->fetch();
+
+        if ($row) {
+            return new user($row['id'], $row['username'], $row['email'], $row['password']);
+        }
+        return null;
     }
 
     public function findUser($username) {

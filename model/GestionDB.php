@@ -19,14 +19,26 @@ use PDOException;
 include('config.php');
 
 class GestionDB{
-    public $pdo;
+    private static $pdo = null;
 
-    public function connexion(){
-        try{
-            $this->pdo = new \PDO("pgsql:host=".SERVERNAME.";port=".PORT.";dbname=".DBNAME, USERNAME, PASSWORD);
-        }catch(PDOException $e){
-            echo $e->getMessage();
+    public static function connexion() {
+        // On vérifie si la connexion n'existe pas déjà pour éviter d'en créer une nouvelle à chaque fois
+        if (self::$pdo === null) {
+            try {
+                // Utilisation de self::$ au lieu de $this->
+                self::$pdo = new \PDO(
+                    "pgsql:host=" . SERVERNAME . ";port=" . PORT . ";dbname=" . DBNAME,
+                    USERNAME,
+                    PASSWORD
+                );
+
+            } catch (\PDOException $e) {
+                // En production, il vaut mieux logger l'erreur que de l'afficher
+                echo "Erreur de connexion : " . $e->getMessage();
+                return null;
+            }
         }
+        return self::$pdo;
     }
 
     public function deconnexion(){

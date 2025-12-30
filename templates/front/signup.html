@@ -85,21 +85,21 @@
         <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 500px;">
             <h3 class="text-primary mb-1 ">Créer un compte</h3>
             <h1 class="text-primary mb-4 ">StreamSquad</h1>
-            <div class="row justify-content-center">
-                <div class="">
-                    <input type="text" id="signup-username" class="form-control mb-3" placeholder="Votre pseudo">
-                    <input type="text" id="signup-email" class="form-control mb-3" placeholder="Votre adresse email">
-                    <input type="password" id="signup-password" class="form-control mb-3"
-                        placeholder="Votre mot de passe">
 
-                    <!-- Zone pour message d'erreur -->
+            <form action="../../control/register.php" method="POST">
+                <div class="row justify-content-center">
+                    <div class="col-11">
+                        <input type="text" name="username" class="form-control mb-3" placeholder="Votre pseudo" required>
+                        <input type="email" name="email" class="form-control mb-3" placeholder="Votre adresse email" required>
+                        <input type="password" name="password" class="form-control mb-3" placeholder="Votre mot de passe" required>
 
+                        <button type="submit" class="btn btn-primary w-100">Créer mon compte</button>
 
-                    <button id="btn-create" class="btn btn-primary w-100">Créer mon compte</button>
-                    <a id="create-account" class="js_access_button" href="/login">J'ai un déjà un compte</a>
-                    <div id="error-msg" class="text-danger mb-3" style="min-height: 24px;"></div>
+                        <br><br>
+                        <a href="login.html" class="text-white text-decoration-none small">J'ai déjà un compte</a>
+                    </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
