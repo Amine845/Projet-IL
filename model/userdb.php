@@ -19,36 +19,20 @@ use classe\user;
 use \PDO;
 
 require('../class/user.php');
-
 require('GestionDB.php');
 
-require_once __DIR__ . '/GestionDB.php';
-require_once __DIR__ . '/../class/user.php';
 
-class userdb{
-
-    private $db;
-
-    public function __construct() {
-        // Initialisation de la connexion à la base de données
-        $this->db = new GestionDB();
-        $this->db->connexion();
-    }
-
-    public function userExists($username) {
-        $sql = "SELECT * FROM users WHERE username = :username";
-        $stmt = $this->db->pdo->prepare($sql);
-        $stmt->execute(['username' => $username]);
-        return $stmt->fetch();
-    }
-
+class UserDB {
     public static function create($username, $email, $password) {
         $db = GestionDB::connexion();
-        // On hache le mot de passe pour la sécurité
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-        $stmt = $db->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
-        return $stmt->execute([$username, $email, $hashedPassword]);
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        
+        try {
+            $stmt = $db->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+            return $stmt->execute([$username, $email, $hash]);
+        } catch (\PDOException $e) {
+            return false;
+        }
     }
 
     public static function getByEmail($email) {
@@ -58,16 +42,8 @@ class userdb{
         $row = $stmt->fetch();
 
         if ($row) {
-            return new user($row['id'], $row['username'], $row['email'], $row['password']);
+            return $row; // On retourne le tableau associatif contenant le hash
         }
         return null;
     }
-
-    public function findUser($username) {
-        $sql = "SELECT * FROM users WHERE username = :username";
-        $stmt = $this->db->pdo->prepare($sql);
-        $stmt->execute(['username' => $username]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
 }

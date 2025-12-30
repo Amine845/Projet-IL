@@ -114,6 +114,56 @@
                 window.location.href = element.getAttribute("href");
             });
         });
+
+                // On attend que le DOM soit chargé pour éviter l'erreur "Cannot read properties of null"
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLogin = document.getElementById('btn-login');
+            const errorMsg = document.getElementById('error-msg');
+            const loginForm = document.getElementById('login-form');
+
+            if (btnLogin) {
+                btnLogin.addEventListener('click', async (e) => {
+                    // Empêcher la soumission classique du formulaire
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+
+                    if (!email || !password) {
+                        errorMsg.textContent = "Veuillez remplir tous les champs.";
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('email', email);
+                    formData.append('password', password);
+
+                    try {
+                        // On pointe vers le contrôleur PHP
+                        const response = await fetch('../../control/login.php', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        // Vérification que la réponse est bien du JSON
+                        const result = await response.json();
+
+                        if (result.success) {
+                            // Redirection vers la room avec les paramètres de session
+                            // Note: result.username doit être renvoyé par votre login.php
+                            window.location.href = "../../room.html?room=GENERAL&user=" + encodeURIComponent(result.username);
+                        } else {
+                            // Affichage de l'erreur renvoyée par le PHP
+                            errorMsg.textContent = result.message || "Email ou mot de passe incorrect.";
+                        }
+                    } catch (err) {
+                        console.error("Erreur de connexion:", err);
+                        errorMsg.textContent = "Erreur de communication avec le serveur d'authentification.";
+                    }
+                });
+            }
+        });
+        
     </script>
 </body>
 

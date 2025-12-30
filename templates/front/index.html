@@ -106,69 +106,64 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const usernameInput = document.getElementById('username');
-        const roomCodeInput = document.getElementById('room-code');
-        const errorMsg = document.getElementById('error-msg');
-
-        // Sauvegarde pseudo (Optionnel, pratique pour les tests)
-        const savedUser = localStorage.getItem('streamSquad_user');
-        if (savedUser) usernameInput.value = savedUser;
-
-        // Création
-        document.getElementById('btn-create').addEventListener('click', () => {
-            const user = usernameInput.value.trim();
-            if (!user) {
-                errorMsg.textContent = "Pseudo requis !";
-                return;
-            }
-            localStorage.setItem('streamSquad_user', user);
-            socket.emit('request_create_room');
-        });
-
-        socket.on('room_created', (code) => {
-            const user = usernameInput.value;
-            window.location.href = `/room?room=${code}&user=${user}`;
-        });
-
-        // Rejoindre
-        document.getElementById('btn-join').addEventListener('click', () => {
-            const user = usernameInput.value.trim();
-            const code = roomCodeInput.value.trim();
-
-            errorMsg.textContent = ""; // Reset erreur
-
-            if (!user || !code) {
-                errorMsg.textContent = "Pseudo et Code requis !";
-                return;
-            }
-            localStorage.setItem('streamSquad_user', user);
-
-            // On demande au serveur si ça existe
-            socket.emit('check_room_existence', code);
-        });
-
 
         // Aller sur n'importe quelle page depuis un href
         const js_access_button = Object.values(document.getElementsByClassName('js-access-button'));
         js_access_button.forEach(element => {
+            
             element.addEventListener('click', (event) =>{
                 window.location.href = element.getAttribute("href");
             });
         });
 
+        // --- LOGIQUE D'INSCRIPTION ---
+        const btnCreate = document.getElementById('btn-create');
+        if (btnCreate) {
+            btnCreate.addEventListener('click', async () => {
+                const username = document.getElementById('signup-username').value;
+                const email = document.getElementById('signup-email').value;
+                const password = document.getElementById('signup-password').value;
+                const errorMsg = document.getElementById('error-msg');
 
-        // Le serveur répond
-        socket.on('room_existence_result', (data) => {
-            if (data.exists) {
-                // Ça existe -> Redirection
-                const user = usernameInput.value;
-                const code = roomCodeInput.value;
-                window.location.href = `/room?room=${code}&user=${user}`;
-            } else {
-                // Ça n'existe pas -> Erreur
-                errorMsg.textContent = "Ce salon n'existe pas";
-            }
-        });
+                if (!username || !email || !password) {
+                    errorMsg.innerText = "Veuillez remplir tous les champs.";
+                    return;
+                }
+
+                // Pour envoyer les données comme un formulaire classique ($_POST en PHP)
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('email', email);
+                formData.append('password', password);
+
+                try {
+                    // On envoie la requête au fichier PHP. 
+                    // Note: Si vous utilisez Node.js, l'URL doit pointer vers le serveur PHP
+                    const response = await fetch('control/register.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    // Si le PHP fait une redirection header("Location: ...")
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+
+                    // Sinon, on traite la réponse (si c'est du JSON)
+                    const data = await response.json();
+                    if (data.success) {
+                        window.location.href = "/templates/front/login.html";
+                    } else {
+                        errorMsg.innerText = data.message || "Erreur lors de l'inscription.";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    // Si le PHP renvoie une redirection brute, l'erreur de JSON arrive ici, 
+                    // mais souvent le navigateur a déjà géré la navigation.
+                }
+            });
+        }
     </script>
 </body>
 

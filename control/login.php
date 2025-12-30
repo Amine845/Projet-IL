@@ -15,23 +15,31 @@
 
 session_start();
 
-$racine_path = '../';
-include_once($racine_path . "model/userdb.php");
-use bd\userdb;
-
 require_once __DIR__ . '/../model/userdb.php';
 
+$response = ["success" => false, "message" => ""];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
 
-    $user = UserDB::getByEmail($email);
+    if (!empty($email) && !empty($password)) {
+        $user = UserDB::getByEmail($email);
 
-    if ($user && password_verify($password, $user->password)) {
-        $_SESSION['user_id'] = $user->id;
-        $_SESSION['username'] = $user->username;
-        header('Location: ../room.html'); // Redirection vers le salon
+        if ($user && password_verify($password, $user['password'])) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            
+            $response["success"] = true;
+            $response["username"] = $user['username'];
+            $response["message"] = "Connexion réussie";
+        } else {
+            $response["message"] = "Email ou mot de passe incorrect.";
+        }
     } else {
-        header('Location: ../templates/front/login.html?error=invalid_credentials');
+        $response["message"] = "Veuillez remplir tous les champs.";
     }
 }
+
+echo json_encode($response);
+exit();
