@@ -75,11 +75,27 @@
 </head>
 
 <body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
-    <nav id="login-nav" class="floating-frame nav-flex p-2">
-        <div class="input-group" >
-            <button href="/signup" id="access-signup" class="floating-frame btn btn-warning js-access-button">S'INSCRIRE</button>
-            <button href="/login" id="access-login" class="btn btn-success js-access-button">SE CONNECTER</button>
+
+        <!-- BOUTON Voir BDD -->
+    <a href="/testDB.html" class="btn btn-dark border-secondary position-fixed shadow" 
+       style="top: 30px; left: 30px; z-index: 1000; border-radius: 10px; opacity: 0.8;">
+        Voir BDD
+    </a>
+
+        <nav id="login-nav" class="floating-frame nav-flex p-2">
+        
+        <!-- CAS 1 : INVITÉ (Visible par défaut) -->
+        <div id="nav-guest" class="input-group">
+            <button href="/signup" class="floating-frame btn btn-warning js-access-button">S'INSCRIRE</button>
+            <button href="/login" class="btn btn-success js-access-button">SE CONNECTER</button>
         </div>
+
+        <!-- CAS 2 : CONNECTÉ (Caché par défaut avec d-none) -->
+        <div id="nav-logged" class="input-group d-none">
+            <span id="nav-username-display" class="text-white fw-bold me-3 align-self-center" style="text-shadow: 1px 1px 2px black;"></span>
+            <button id="btn-logout" class="btn btn-danger">DÉCONNEXION</button>
+        </div>
+
     </nav>
     <div class=" text-center center-position col-md-4">
         <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 800px;">
@@ -98,77 +114,14 @@
                     <div id="error-msg" class="text-danger mb-3" style="min-height: 24px;"></div>
 
                     <button id="btn-create" class="btn btn-primary w-100">Créer un salon</button>
-                                </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- LIBRAIRIES -->
     <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const usernameInput = document.getElementById('username');
-        const roomCodeInput = document.getElementById('room-code');
-        const errorMsg = document.getElementById('error-msg');
-
-        // Sauvegarde pseudo (Optionnel, pratique pour les tests)
-        const savedUser = localStorage.getItem('streamSquad_user');
-        if (savedUser) usernameInput.value = savedUser;
-
-        // Création
-        document.getElementById('btn-create').addEventListener('click', () => {
-            const user = usernameInput.value.trim();
-            if (!user) {
-                errorMsg.textContent = "Pseudo requis !";
-                return;
-            }
-            localStorage.setItem('streamSquad_user', user);
-            socket.emit('request_create_room');
-        });
-
-        socket.on('room_created', (code) => {
-            const user = usernameInput.value;
-            window.location.href = `/room?room=${code}&user=${user}`;
-        });
-
-        // Rejoindre
-        document.getElementById('btn-join').addEventListener('click', () => {
-            const user = usernameInput.value.trim();
-            const code = roomCodeInput.value.trim();
-
-            errorMsg.textContent = ""; // Reset erreur
-
-            if (!user || !code) {
-                errorMsg.textContent = "Pseudo et Code requis !";
-                return;
-            }
-            localStorage.setItem('streamSquad_user', user);
-
-            // On demande au serveur si ça existe
-            socket.emit('check_room_existence', code);
-        });
-
-        // Aller sur n'importe quelle page depuis un href
-        const js_access_button = Object.values(document.getElementsByClassName('js-access-button'));
-        js_access_button.forEach(element => {
-            
-            element.addEventListener('click', (event) =>{
-                window.location.href = element.getAttribute("href");
-            });
-        });
-
-        // Le serveur répond
-        socket.on('room_existence_result', (data) => {
-            if (data.exists) {
-                // Ça existe -> Redirection
-                const user = usernameInput.value;
-                const code = roomCodeInput.value;
-                window.location.href = `/room?room=${code}&user=${user}`;
-            } else {
-                // Ça n'existe pas -> Erreur
-                errorMsg.textContent = "Ce salon n'existe pas";
-            }
-        });
-    </script>
+    <!-- TON SCRIPT EXTERNE -->
+    <script src="/templates/src/js/index.js"></script>
 </body>
-
 </html>

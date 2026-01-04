@@ -81,23 +81,22 @@
     <div class=" text-center center-position col-md-7">
         <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 500px;">
             <h1 class="text-primary mb-1 ">Se connecter à</h1>
-                <h1 class="text-primary mb-4 ">StreamSquad</h1>
+            <h1 class="text-primary mb-4 ">StreamSquad</h1>
 
-                <form action="/api/login" method="POST">
+            <!-- Ajout d'un ID au formulaire et suppression de action/method -->
+            <form id="login-form">
+                <div class="row justify-content-center">
+                    <div class="">
+                        <input type="email" id="login-email" class="form-control mb-3" placeholder="Votre adresse mail" required>
+                        <input type="password" id="login-password" class="form-control mb-3" placeholder="Votre mot de passe" required>
 
-                    <div class="row justify-content-center">
-                        <div class="">
-                            <input type="email" name="email" id="login-email" class="form-control mb-3" placeholder="Votre adresse mail">
-                            <input type="password" name="password" id="login-password" class="form-control mb-3"placeholder="Votre mot de passe">
-
-                            <!-- Zone pour message d'erreur -->
-
-                            <button type="submit" id="btn-create" class="btn btn-primary w-100">Se connecter</button>
-                            <a id="create-account" class="js-access-button" href="/signup">Vous n'avez pas encore de compte ?</a>
-                            <div id="error-msg" class="text-danger mb-3" style="min-height: 24px;"></div>
-                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+                        <a id="create-account" class="js-access-button" href="/signup">Vous n'avez pas encore de compte ?</a>
+                        <!-- Zone erreur -->
+                        <div id="error-msg" class="text-danger mt-3" style="min-height: 24px;"></div>
                     </div>
-                </form>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -105,15 +104,43 @@
     <script>
         const socket = io();
 
-        // Aller sur n'importe quelle page depuis un href
-        const js_access_button = Object.values(document.getElementsByClassName('js-access-button'));
+        // Navigation
+        const js_access_button = document.querySelectorAll('.js-access-button');
         js_access_button.forEach(element => {
-            
-            element.addEventListener('click', (event) =>{
+            element.addEventListener('click', () => {
                 window.location.href = element.getAttribute("href");
             });
-        });        
+        });
+
+        // Gestion du login via API Fetch
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('error-msg');
+
+            errorDiv.textContent = "Connexion...";
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('streamSquad_user', data.username);
+                    window.location.href = '/'; 
+                } else {
+                    errorDiv.textContent = data.message;
+                }
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = "Erreur serveur.";
+            }
+        });
     </script>
 </body>
-
 </html>

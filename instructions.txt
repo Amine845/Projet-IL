@@ -23,3 +23,51 @@ INSERT INTO video (\"URL\", title, playlist_id) VALUES ('dQw4w9WgXcQ', 'Never Go
 #si pas déjà fait avant : npm install
 
 node control/server.js
+
+#si erreur bcrypt : npm install bcrypt
+
+
+
+
+arborescence du site : 
+
+racine/
+├── admin/
+├── backup/
+├── class/
+│   ├── login.php
+│   └── user.php
+├── control/
+│   ├── node_modules/
+│   ├── login.php
+│   ├── logout.php
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── register.php
+│   └── server.js
+├── model/
+│   ├── config.php
+│   ├── GestionDB.php
+│   └── userdb.php
+├── node_modules/
+├── templates/
+│   ├── CSS/
+│   │   └── style.css
+│   ├── front/
+│   │   ├── corps.php
+│   │   ├── index.html
+│   │   ├── login.html
+│   │   ├── room.html
+│   │   └── signup.html
+│   └── src/
+│       ├── js/
+│       │   ├── index.js
+│       │   └── room.js
+│       ├── background.png
+│       └── background2.png
+├── instructions.txt
+├── package-lock.json
+├── package.json
+├── README.md
+├── tables.sql
+└── testDB.html

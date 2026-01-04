@@ -8,69 +8,128 @@
 <body class="bg-dark text-white p-5">
 
     <div class="container">
-        <h1 class="mb-4 text-warning">État de la Base de Données</h1>
-        
-        <div class="d-flex justify-content-between mb-3">
-            <p>Liste des utilisateurs actuellement enregistrés dans les salles (SQL).</p>
-            <button id="btn-refresh" class="btn btn-primary">Actualiser</button>
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h1 class="text-warning mb-0">État de la Base de Données</h1>
+            <button id="btn-refresh" class="btn btn-primary btn-lg">Actualiser Tout</button>
         </div>
-
-        <div class="card bg-secondary border-0">
+        
+        <!-- SECTION 1 : SALLES -->
+        <h3 class="text-info border-bottom border-secondary pb-2 mb-3">1. Utilisateurs actifs (Par Salle)</h3>
+        <div class="card bg-secondary border-0 mb-5">
             <div class="card-body">
-                <table class="table table-dark table-striped">
+                <table class="table table-dark table-striped align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>ID Salle (Room Code)</th>
-                            <th>Pseudo Utilisateur</th>
+                            <th style="width: 20%;">ID Salle</th>
+                            <th>Utilisateurs connectés</th>
                         </tr>
                     </thead>
-                    <tbody id="db-content">
-                        <!-- Les données arriveront ici -->
-                    </tbody>
+                    <tbody id="rooms-content"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 2 : COMPTES -->
+        <h3 class="text-info border-bottom border-secondary pb-2 mb-3">2. Tous les Comptes (Table "user")</h3>
+        <div class="card bg-secondary border-0">
+            <div class="card-body">
+                <table class="table table-dark table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Pseudo</th>
+                            <th>Email</th>
+                            <th>Rôle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-content"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <script>
-        const tbody = document.getElementById('db-content');
+        const roomsTbody = document.getElementById('rooms-content');
+        const usersTbody = document.getElementById('users-content');
         const btn = document.getElementById('btn-refresh');
 
-        async function loadData() {
-            tbody.innerHTML = '<tr><td colspan="2" class="text-center">Chargement...</td></tr>';
-            
+        // --- CHARGEMENT DES SALLES (EXISTANT) ---
+        async function loadRooms() {
+            roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-white">Chargement...</td></tr>';
             try {
-                // Appel à l'API créée dans server.js
                 const response = await fetch('/api/rooms-users');
                 const data = await response.json();
-
-                tbody.innerHTML = ''; // Vider
+                roomsTbody.innerHTML = '';
 
                 if(data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="2" class="text-center text-light">Aucune donnée (Personne n\'est connecté ou BDD vide)</td></tr>';
+                    roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-white fst-italic">Aucun utilisateur en salle.</td></tr>';
                     return;
                 }
 
+                const roomsMap = {};
                 data.forEach(row => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="fw-bold text-info">${row.room_id}</td>
-                        <td>${row.username}</td>
-                    `;
-                    tbody.appendChild(tr);
+                    if (!roomsMap[row.room_id]) roomsMap[row.room_id] = [];
+                    roomsMap[row.room_id].push({ username: row.username, email: row.email });
                 });
 
+                for (const [roomId, users] of Object.entries(roomsMap)) {
+                    let usersHtml = '<ul class="list-group list-group-flush rounded">';
+                    users.forEach(u => {
+                        usersHtml += `
+                            <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-success">${u.username}</span>
+                                <span class="small text-info ms-3">${u.email}</span>
+                            </li>`;
+                    });
+                    usersHtml += '</ul>';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="fw-bold text-warning fs-5">#${roomId}</td><td>${usersHtml}</td>`;
+                    roomsTbody.appendChild(tr);
+                }
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Erreur de connexion API</td></tr>';
+                roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Erreur API Rooms</td></tr>';
             }
         }
 
-        // Charger au démarrage et au clic
-        loadData();
-        btn.addEventListener('click', loadData);
+        // --- CHARGEMENT DES COMPTES (NOUVEAU) ---
+        async function loadAllUsers() {
+            usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-white">Chargement...</td></tr>';
+            try {
+                const response = await fetch('/api/all-users'); // Appel nouvelle API
+                const data = await response.json();
+                usersTbody.innerHTML = '';
+
+                if(data.length === 0) {
+                    usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-white fst-italic">Table vide.</td></tr>';
+                    return;
+                }
+
+                data.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${user.user_id}</td>
+                        <td class="fw-bold">${user.username}</td>
+                        <td class="text-info">${user.email}</td>
+                        <td><span class="badge bg-light text-dark">${user.role}</span></td>
+                    `;
+                    usersTbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error(error);
+                usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erreur API Users</td></tr>';
+            }
+        }
+
+        // Fonction globale
+        function refreshAll() {
+            loadRooms();
+            loadAllUsers();
+        }
+
+        // Lancement
+        refreshAll();
+        btn.addEventListener('click', refreshAll);
     </script>
 </body>
 </html>
-
-<!-- Ajouter "testDB.html" à la fin de l'url racine pour y acceder -->

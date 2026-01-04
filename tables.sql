@@ -12,6 +12,9 @@ CREATE TABLE "user" (
     -- Nom d'utilisateur (requis, unique pour la connexion)
                         username VARCHAR(50) NOT NULL UNIQUE,
 
+    -- Email de l'utilisateur (requis, unique pour la connexion)
+                        email VARCHAR(255) UNIQUE NOT NULL,
+
     -- Mot de passe haché (utiliser TEXT pour stocker le hachage long, ex: bcrypt)
                         password TEXT NOT NULL,
 

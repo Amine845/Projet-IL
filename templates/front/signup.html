@@ -86,17 +86,20 @@
             <h3 class="text-primary mb-1 ">Créer un compte</h3>
             <h1 class="text-primary mb-4 ">StreamSquad</h1>
 
-            <form action="/api/signup" method="POST">
+            <!-- Ajout ID et suppression action -->
+            <form id="signup-form">
                 <div class="row justify-content-center">
                     <div class="col-11">
-                        <input type="text" name="username" class="form-control mb-3" placeholder="Votre pseudo" required>
-                        <input type="email" name="email" class="form-control mb-3" placeholder="Votre adresse email" required>
-                        <input type="password" name="password" class="form-control mb-3" placeholder="Votre mot de passe" required>
+                        <input type="text" id="signup-username" class="form-control mb-3" placeholder="Votre pseudo" required>
+                        <input type="email" id="signup-email" class="form-control mb-3" placeholder="Votre adresse email" required>
+                        <input type="password" id="signup-password" class="form-control mb-3" placeholder="Votre mot de passe" required>
 
                         <button type="submit" class="btn btn-primary w-100">Créer mon compte</button>
 
                         <br><br>
                         <a href="login.html" class="text-white text-decoration-none small">J'ai déjà un compte</a>
+                        <!-- Zone erreur -->
+                        <div id="error-msg" class="text-danger mt-3" style="min-height: 24px;"></div>
                     </div>
                 </div>
             </form>
@@ -107,15 +110,44 @@
     <script>
         const socket = io();
 
-        // Aller sur n'importe quelle page depuis un href
-        const js_access_button = Object.values(document.getElementsByClassName('js-access-button'));
+        // Navigation
+        const js_access_button = document.querySelectorAll('.js-access-button');
         js_access_button.forEach(element => {
-            
-            element.addEventListener('click', (event) =>{
+            element.addEventListener('click', () => {
                 window.location.href = element.getAttribute("href");
             });
         });
+
+        // Inscription via API Fetch
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('signup-username').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const errorDiv = document.getElementById('error-msg');
+
+            errorDiv.textContent = "Création...";
+
+            try {
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert("Compte créé ! Vous allez être redirigé vers la connexion.");
+                    window.location.href = '/login'; 
+                } else {
+                    errorDiv.textContent = data.message;
+                }
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = "Erreur serveur.";
+            }
+        });
     </script>
 </body>
-
 </html>

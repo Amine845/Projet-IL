@@ -87,47 +87,33 @@
                 </button>
             </div>
         </form>
-
-        
     </div>
-
 
     <div class="row mt-3">
         <!-- Colonne Gauche : Lecteur Vidéo -->
         <div class="col-md-8">
-
-            <!-- Infos Contrôleur -->
             <div class="mb-2 d-flex justify-content-between">
                 <span>En contrôle : <strong id="controller-name" class="text-info">Personne</strong></span>
                 <button id="btn-control" class="btn btn-sm btn-warning">Prendre le contrôle</button>
             </div>
-
-            <!-- Lecteur YouTube (API) -->
             <div id="player-container" class="floating-frame">
                 <div id="player"></div>
             </div>
         </div>
 
         <!-- Colonne Droite : Chat & Users -->
-
-
-
-        <!-- Onglets  Clavardage / Liste utilisateurs -->
         <div class="col-md-4" >
-            <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;"  !--Un div de mise en forme>
+            <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;">
                 <div class="nav nav-tabs d-flex input-group card-header" style="border-radius: 0px 5px;" id="nav-tab" role="tablist">
                     <button style="width: 50%;" class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#show-chat" type="button">Clavardage</button>
                     <button style="width: 50%;" class="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#show-users" type="button">Utilisateurs en ligne</button>
                 </div>
 
-
-                <!-- Liste Users -->
                 <div class="tab-content" style="height: 100%;">
                     <div id="show-users" class="tab-pane text-white chat-container"style="height: 100%;">
                         <ul id="users-list" class="list-unstyled mb-0" style="overflow-y: auto;"></ul>
                     </div>
 
-                    <!-- Chat -->
                     <div id="show-chat" class="show active tab-pane " style="width: 100%;height: 100%">
                         <div class="text-white chat-container card" style="display: flex;width: 100%;height: 100%">
                             <div id="chat-box" class="chat-messages" style="flex: 1 0 0;"></div>
@@ -137,7 +123,6 @@
                                 <button id="btn-send" class="btn btn-primary">Envoyer</button>
                             </div>
                         </div>
-                            
                     </div>
                 </div>
             </div>
@@ -145,12 +130,11 @@
     </div>
 </br>
 
-
     <!-- PLAYLIST -->
     <div class="card text-white border-secondary mb-3">
         <div class="card-header border-secondary text-white smoke liquid" style="display: inline-flex;">
             <h6 class="card-title"><i class="fas fa-list"></i> Playlist en attente</h6>
-            <button id="add-current-video-btn" class="btn btn-success card-header liquid"   style="position: fixed; right: 20px;" title="Ajouter la vidéo en cours à la playlist">
+            <button id="add-current-video-btn" class="btn btn-success card-header liquid" style="position: fixed; right: 20px;" title="Ajouter la vidéo en cours à la playlist">
             <i class="fa fa-refresh"></i> Ajouter à la Playlist
             </button>
         </div>
@@ -161,248 +145,14 @@
         </ul>
     </div>
 
-
-    <!--    AFFICHAGE DES RESULTATS DE RECHERCHE   -->
+    <!-- RESULTATS DE RECHERCHE -->
     <div class="mb-4">
         <div id="results-container" class="row mt-3 g-3">
     </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script>
-    
-    const socket = io();
-    params = new URLSearchParams(window.location.search);
-    const roomCode = params.get('room');
-    const username = params.get('user');
-
-    if (!roomCode || !username) window.location.href = '/';
-    document.getElementById('display-code').textContent = roomCode;
-    
-    socket.emit('join_room', { roomCode, username });
-
-    // --- API YOUTUBE ---
-    var tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    var firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-    var player;
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            videoId: '3y5H4XINDEU', // Vidéo par défaut
-            playerVars: { 'autoplay': 0, 'controls': 1 },
-            events: {
-                'onStateChange': onPlayerStateChange
-            }
-        });
-    }
-
-    // Quand le serveur dit de changer la vidéo
-    socket.on('load_video', (videoId) => {
-        if (player && player.loadVideoById) {
-            player.loadVideoById(videoId);
-        }
-    });
-
-    // --- SYNCHRONISATION (PLAY/PAUSE) ---
-    let currentController = null;
-    let isSyncing = false;
-
-    document.getElementById('btn-control').addEventListener('click', () => {
-        socket.emit('claim_control', { roomCode, username });
-    });
-
-    socket.on('update_controller', (name) => {
-        currentController = name;
-        document.getElementById('controller-name').textContent = name;
-    });
-
-    function onPlayerStateChange(event) {
-        if (currentController === username && !isSyncing) {
-            let state = event.data;
-            let time = player.getCurrentTime();
-
-            if (state === YT.PlayerState.PLAYING) {
-                socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
-            } else if (state === YT.PlayerState.PAUSED) {
-                socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
-            }
-        }
-    }
-
-    socket.on('sync_video', (data) => {
-        if (!player || !player.seekTo) return;
-        
-        isSyncing = true;
-        if (Math.abs(player.getCurrentTime() - data.currentTime) > 1) {
-            player.seekTo(data.currentTime);
-        }
-        if (data.type === 'play') player.playVideo();
-        else if (data.type === 'pause') player.pauseVideo();
-        
-        setTimeout(() => { isSyncing = false; }, 500);
-    });
-
-    // --- CHAT & USERS (CONSERVÉ) ---
-    const chatBox = document.getElementById('chat-box');
-    const usersList = document.getElementById('users-list');
-    const msgInput = document.getElementById('msg-input');
-    const typingIndicator = document.getElementById('typing-indicator');
-
-    socket.on('update_users', (users) => {
-        usersList.innerHTML = users.map(u => `<li class="text-white"><span style="color:#0f0;">●</span> ${u.username}</li>`).join('');
-    });
-
-    socket.on('receive_message', (data) => {
-        const div = document.createElement('div');
-        if (data.isSystem) {
-            div.className = 'system-msg';
-            div.textContent = data.text;
-        } else {
-            div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
-        }
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
-
-    function sendMessage() {
-        if (msgInput.value.trim()) {
-            socket.emit('send_message', { roomCode, username, text: msgInput.value });
-            msgInput.value = '';
-        }
-    }
-    document.getElementById('btn-send').addEventListener('click', sendMessage);
-    msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-    let typingTimer;
-    msgInput.addEventListener('input', () => socket.emit('typing', { roomCode, username }));
-    socket.on('user_typing', (u) => {
-        typingIndicator.textContent = `${u} écrit...`;
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => typingIndicator.textContent = '', 3000);
-    });
-
-    const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
-    const API_URL = "https://www.googleapis.com/youtube/v3/search";
-    const form = document.getElementById('search-form');
-    const input = document.getElementById('search-input');
-    const playlistList = document.getElementById('playlist-list');
-    const resultsContainer = document.getElementById('results-container');
-    let playlist = [];
-
-    function videoRecherchee(video) {
-        const videoId = video.id.videoId;
-        const title = video.snippet.title;
-        const thumbnailUrl = video.snippet.thumbnails.high.url;
-
-        return `
-            <div class="col-md-4 mb-3">
-                <div class="card h-100 bg-dark border-secondary text-white video-result" 
-                    data-video-id="${videoId}" style="cursor:pointer;">
-                    <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
-                    <div class="card-body p-2">
-                        <p class="card-text small text-truncate">${title}</p>
-                    </div>
-                </div>
-            </div>`;
-    }
-
-
-    function renderResults(items) {
-        if (!items) return;
-
-        resultsContainer.innerHTML = items.map(videoRecherchee).join('');
-
-        // Scroll automatique vers les résultats
-        resultsContainer.scrollIntoView({ behavior: "smooth" });
-
-        document.querySelectorAll('.video-result').forEach(card => {
-            card.addEventListener('click', () => {
-                const videoId = card.dataset.videoId;
-
-                socket.emit('change_video', { roomCode, videoId });
-
-                // Scroll vers le lecteur après clique
-                document.getElementById('player-container').scrollIntoView({ behavior: "smooth" });
-            });
-        });
-    }
-
-    async function rechercheYoutubeVideos(recherche) {
-        const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
-        try {
-            const res = await fetch(`${API_URL}?${params.toString()}`);
-            const data = await res.json();
-            renderResults(data.items);
-        } catch(e) { console.error(e); }
-    }
-
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        rechercheYoutubeVideos(input.value.trim());
-    });
-
-    function renderPlaylist() {
-    playlistList.innerHTML = "";
-
-    if (playlist.length === 0) {
-        playlistList.innerHTML = `
-            <li class="list-group-item bg-dark text-muted text-center small border-secondary">
-                Aucune vidéo dans la playlist.
-            </li>
-        `;
-        return;
-    }
-
-    playlist.forEach((video, index) => {
-        const li = document.createElement("li");
-        li.className = "list-group-item bg-dark border-secondary text-white d-flex justify-content-between align-items-center";
-        
-        li.innerHTML = `
-            <span style="cursor:pointer;" class="video-play" data-index="${index}">
-                ${video.title}
-            </span>
-            <button class="btn btn-sm btn-outline-danger remove-video" data-index="${index}">X</button>
-        `;
-
-        playlistList.appendChild(li);
-    });
-
-    // Click sur une vidéo → la jouer
-    document.querySelectorAll(".video-play").forEach(el => {
-        el.addEventListener("click", () => {
-            const v = playlist[el.dataset.index];
-            socket.emit("change_video", { roomCode, videoId: v.id });
-        });
-    });
-
-    // Suppression
-    document.querySelectorAll(".remove-video").forEach(btn => {
-        btn.addEventListener("click", () => {
-            playlist.splice(btn.dataset.index, 1);
-            renderPlaylist();
-        });
-    });
-    }
-
-    function addVideoToPlaylist(videoId, title) {
-    playlist.push({ id: videoId, title: title });
-    renderPlaylist();
-    }
-
-    document.getElementById("add-current-video-btn").addEventListener("click", () => {
-        if (!player || !player.getVideoData) return;
-
-        const data = player.getVideoData();
-        const id = data.video_id;
-        const title = data.title || "Vidéo sans titre";
-
-        addVideoToPlaylist(id, title);
-    });
-
-</script>
+<!-- APPEL DU FICHIER JS EXTERNE -->
+<script src="/templates/src/js/room.js"></script>
 </body>
 </html>
