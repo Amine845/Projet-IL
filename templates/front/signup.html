@@ -115,39 +115,6 @@
                 window.location.href = element.getAttribute("href");
             });
         });
-            document.getElementById('btn-create').addEventListener('click', async (e) => {
-        const username = document.getElementById('signup-username').value;
-        const email = document.getElementById('signup-email').value;
-        const password = document.getElementById('signup-password').value;
-        const errorMsg = document.getElementById('error-msg');
-
-        if (!username || !email || !password) {
-            errorMsg.textContent = "Veuillez remplir tous les champs.";
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('email', email);
-        formData.append('password', password);
-
-        try {
-            // Remplacez par l'URL réelle de votre serveur PHP si différente
-            const response = await fetch('control/register.php', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                window.location.href = "templates/front/login.html?reg=success";
-            } else {
-                errorMsg.textContent = result.message;
-            }
-        } catch (err) {
-            errorMsg.textContent = "Erreur de connexion au serveur d'authentification.";
-        }
-    });
     </script>
 </body>
 
