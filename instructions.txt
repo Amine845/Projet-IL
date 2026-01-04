@@ -23,3 +23,5 @@ INSERT INTO video (\"URL\", title, playlist_id) VALUES ('dQw4w9WgXcQ', 'Never Go
 #si pas déjà fait avant : npm install
 
 node control/server.js
+
+npm install bcrypt

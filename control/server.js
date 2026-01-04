@@ -213,7 +213,7 @@ app.post('/api/login', async (req, res) => {
 
     try {
         const result = await pool.query(
-            `SELECT * FROM users WHERE email = $1`,
+            `SELECT * FROM user WHERE email = $1`,
             [email]
         );
 
@@ -251,7 +251,7 @@ app.post('/api/signup', async (req, res) => {
     try {
         // Vérifier si email déjà utilisé
         const check = await pool.query(
-            `SELECT user_id FROM users WHERE email = $1`,
+            `SELECT * FROM user WHERE email = $1`,
             [email]
         );
 
@@ -263,7 +263,7 @@ app.post('/api/signup', async (req, res) => {
 
         // Insertion
         await pool.query(
-            `INSERT INTO users (username, email, password)
+            `INSERT INTO user (username, email, password)
              VALUES ($1, $2, $3)`,
             [username, email, hash]
         );
@@ -273,8 +273,9 @@ app.post('/api/signup', async (req, res) => {
             message: "Compte créé avec succès"
         });
 
-    } catch (err) {
-        console.log(err);
+    } 
+    catch (err){
+        console.error("ERREUR SIGNUP :", err);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 });
