@@ -204,6 +204,7 @@ cleanDatabaseOnStart().then(() => {
     });
 });
 
+// création de la route pour le login 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
@@ -238,6 +239,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// création de la route pour l'inscrption
 app.post('/api/signup', async (req, res) => {
     const { username, password } = req.body;
 
