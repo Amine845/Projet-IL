@@ -204,17 +204,16 @@ cleanDatabaseOnStart().then(() => {
     });
 });
 
-// création de la route login
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    if (!email || !password)
+    if (!username || !password)
         return res.status(400).json({ success: false, message: "Champs manquants" });
 
     try {
         const result = await pool.query(
-            `SELECT * FROM user WHERE email = $1`,
-            [email]
+            `SELECT * FROM "user" WHERE username = $1`,
+            [username]
         );
 
         if (result.rowCount === 0)
@@ -239,42 +238,34 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// création de la route signup
-const bcrypt = require("bcrypt");
-
 app.post('/api/signup', async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, password } = req.body;
 
-    if (!username || !email || !password)
+    if (!username || !password)
         return res.status(400).json({ success: false, message: "Tous les champs sont obligatoires." });
 
     try {
-        // Vérifier si email déjà utilisé
+        // Vérifier si username déjà utilisé
         const check = await pool.query(
-            `SELECT * FROM user WHERE email = $1`,
-            [email]
+            `SELECT * FROM "user" WHERE username = $1`,
+            [username]
         );
 
         if (check.rowCount > 0)
-            return res.json({ success: false, message: "Un compte existe déjà avec cet email." });
+            return res.json({ success: false, message: "Nom d'utilisateur déjà pris." });
 
-        // Hash du mot de passe
+        const bcrypt = require("bcrypt");
         const hash = await bcrypt.hash(password, 10);
 
-        // Insertion
         await pool.query(
-            `INSERT INTO user (username, email, password)
-             VALUES ($1, $2, $3)`,
-            [username, email, hash]
+            `INSERT INTO "user" (username, password)
+             VALUES ($1, $2)`,
+            [username, hash]
         );
 
-        res.json({
-            success: true,
-            message: "Compte créé avec succès"
-        });
+        res.json({ success: true, message: "Compte créé avec succès" });
 
-    } 
-    catch (err){
+    } catch (err) {
         console.error("ERREUR SIGNUP :", err);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
