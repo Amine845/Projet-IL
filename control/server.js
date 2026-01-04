@@ -6,6 +6,9 @@ const { Pool } = require('pg'); // Module Postgres
 const path = require('path');
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 const server = http.createServer(app);
 const io = new Server(server);
 
@@ -21,17 +24,19 @@ const pool = new Pool({
 // --- CHEMINS ---
 const cheminRacine = path.join(__dirname, '../');
 const cheminVues = path.join(__dirname, '../templates/front/');
-app.use(express.static(cheminRacine));
-
-// midleware pour lire les formulaires
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
 app.get('/', (req, res) => res.sendFile(path.join(cheminVues, 'index.html')));
 app.get('/room', (req, res) => res.sendFile(path.join(cheminVues, 'room.html')));
 app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'testDB.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(cheminVues, 'login.html')));
 app.get('/signup', (req, res) => res.sendFile(path.join(cheminVues, 'signup.html')));
+
+app.use(express.static(cheminRacine));
+
+// midleware pour lire les formulaires
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 
 // --- VARIABLES (Pour Socket.io) ---
 // On garde ça pour la fluidité du temps réel, la BDD sert de stockage
