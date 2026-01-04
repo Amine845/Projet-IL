@@ -23,6 +23,10 @@ const cheminRacine = path.join(__dirname, '../');
 const cheminVues = path.join(__dirname, '../templates/front/');
 app.use(express.static(cheminRacine));
 
+// midleware pour lire les formulaires
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 app.get('/', (req, res) => res.sendFile(path.join(cheminVues, 'index.html')));
 app.get('/room', (req, res) => res.sendFile(path.join(cheminVues, 'room.html')));
 app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'testDB.html')));
@@ -193,4 +197,79 @@ cleanDatabaseOnStart().then(() => {
     server.listen(PORT, () => {
         console.log(`Serveur lancé sur http://localhost:${PORT}`);
     });
+});
+
+// création de la route login
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password)
+        return res.status(400).json({ success: false, message: "Champs manquants" });
+
+    try {
+        const result = await pool.query(
+            `SELECT * FROM users WHERE email = $1`,
+            [email]
+        );
+
+        if (result.rowCount === 0)
+            return res.json({ success: false, message: "Utilisateur introuvable" });
+
+        const user = result.rows[0];
+
+        const bcrypt = require("bcrypt");
+        const ok = await bcrypt.compare(password, user.password);
+
+        if (!ok)
+            return res.json({ success: false, message: "Mot de passe incorrect" });
+
+        res.json({
+            success: true,
+            username: user.username
+        });
+
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({ success: false, message: "Erreur serveur" });
+    }
+});
+
+// création de la route signup
+const bcrypt = require("bcrypt");
+
+app.post('/api/signup', async (req, res) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password)
+        return res.status(400).json({ success: false, message: "Tous les champs sont obligatoires." });
+
+    try {
+        // Vérifier si email déjà utilisé
+        const check = await pool.query(
+            `SELECT user_id FROM users WHERE email = $1`,
+            [email]
+        );
+
+        if (check.rowCount > 0)
+            return res.json({ success: false, message: "Un compte existe déjà avec cet email." });
+
+        // Hash du mot de passe
+        const hash = await bcrypt.hash(password, 10);
+
+        // Insertion
+        await pool.query(
+            `INSERT INTO users (username, email, password)
+             VALUES ($1, $2, $3)`,
+            [username, email, hash]
+        );
+
+        res.json({
+            success: true,
+            message: "Compte créé avec succès"
+        });
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, message: "Erreur serveur" });
+    }
 });

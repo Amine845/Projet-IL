@@ -83,13 +83,12 @@
             <h1 class="text-primary mb-1 ">Se connecter à</h1>
                 <h1 class="text-primary mb-4 ">StreamSquad</h1>
 
-                <form action="../../control/login.php" method="POST">
+                <form action="/api/login" method="POST">
 
                     <div class="row justify-content-center">
                         <div class="">
-                            <input type="text" id="login-username" class="form-control mb-3" placeholder="Votre pseudo">
-                            <input type="password" id="login-password" class="form-control mb-3"
-                                placeholder="Votre mot de passe">
+                            <input type="email" name="email" id="login-email" class="form-control mb-3" placeholder="Votre adresse mail">
+                            <input type="password" name="password" id="login-password" class="form-control mb-3"placeholder="Votre mot de passe">
 
                             <!-- Zone pour message d'erreur -->
 
