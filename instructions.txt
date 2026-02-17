@@ -17,14 +17,16 @@ PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "
 INSERT INTO \"user\" (username, password, role) VALUES ('AdminTest', '12345', 'admin');
 INSERT INTO room (name, password, host_id) VALUES ('Salon de Test', NULL, 1);
 INSERT INTO playlist (room_id, video_count) VALUES (1, 1);
-INSERT INTO video (\"URL\", title, playlist_id) VALUES ('dQw4w9WgXcQ', 'Never Gonna Give You Up', 1);
-"
+INSERT INTO video (\"URL\", title, playlist_id) VALUES ('dQw4w9WgXcQ', 'Never Gonna Give You Up', 1);"
 
 #si pas déjà fait avant : npm install
 
 node control/server.js
 
 #si erreur bcrypt : npm install bcrypt
+
+#si pas fait : 
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "CREATE TABLE marker (marker_id SERIAL PRIMARY KEY, room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE, user_id INTEGER REFERENCES \"user\"(user_id) ON DELETE SET NULL, timestamp_seconds REAL NOT NULL, comment TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
 
 
 

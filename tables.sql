@@ -84,3 +84,27 @@ CREATE TABLE video (
                                REFERENCES playlist(playlist_id)
                                ON DELETE CASCADE -- Si la playlist est supprimée, les vidéos sont supprimées
 );
+
+CREATE TABLE marker (
+    marker_id SERIAL PRIMARY KEY,
+    
+    -- Lien avec la salle
+    room_id INTEGER NOT NULL,
+    
+    -- Lien avec l'utilisateur (qui a écrit la note)
+    -- ON DELETE SET NULL : si l'user est supprimé, le commentaire reste (anonyme)
+    user_id INTEGER REFERENCES "user"(user_id) ON DELETE SET NULL,
+    
+    -- Le temps exact dans la vidéo
+    timestamp_seconds REAL NOT NULL,
+    
+    -- Le contenu du commentaire
+    comment TEXT NOT NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_room_marker
+        FOREIGN KEY (room_id)
+        REFERENCES room(room_id)
+        ON DELETE CASCADE
+);

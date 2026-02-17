@@ -258,6 +258,86 @@ function init_room() {
             rechercheYoutubeVideos(inputSearch.value.trim());
         });
     }
+
+
+    // --- GESTION DES MARQUEURS / ANALYSE ---
+    const markersList = document.getElementById('markers-list');
+    const markerInput = document.getElementById('marker-input');
+    const btnAddMarker = document.getElementById('btn-add-marker');
+    const timeDisplay = document.getElementById('current-time-display');
+
+    // Utilitaire : Convertir secondes en MM:SS
+    function formatTime(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+    }
+
+    // Mettre à jour l'affichage du temps quand la vidéo joue
+    setInterval(() => {
+        if (window.player && window.player.getCurrentTime) {
+            const t = window.player.getCurrentTime();
+            if(timeDisplay) timeDisplay.textContent = formatTime(t);
+        }
+    }, 1000);
+
+    // 1. Envoyer un marqueur
+    if (btnAddMarker) {
+        btnAddMarker.addEventListener('click', () => {
+            const comment = markerInput.value.trim();
+            if (!comment || !window.player) return;
+
+            const currentTime = window.player.getCurrentTime();
+
+            socket.emit('add_marker', {
+                roomCode: roomCode,
+                username: username,
+                timestamp: currentTime,
+                comment: comment
+            });
+
+            markerInput.value = ''; // Vider le champ
+        });
+    }
+
+    // 2. Afficher un marqueur dans la liste
+    function displayMarker(marker) {
+        const li = document.createElement('li');
+        li.className = "list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center marker-item";
+        li.style.cursor = "pointer";
+        
+        li.innerHTML = `
+            <div>
+                <span class="badge bg-info me-2">${formatTime(marker.timestamp_seconds)}</span>
+                <strong>${marker.username} :</strong> ${marker.comment}
+            </div>
+            <small class="text-muted">▶️</small>
+        `;
+
+        // Clic sur le marqueur = Saut dans la vidéo
+        li.addEventListener('click', () => {
+            if (window.player && window.player.seekTo) {
+                window.player.seekTo(marker.timestamp_seconds, true);
+                window.player.playVideo();
+            }
+        });
+
+        markersList.prepend(li); // Ajoute au début (le plus récent en haut)
+    }
+
+    // Réception d'un nouveau marqueur (Temps réel)
+    socket.on('new_marker', (marker) => {
+        displayMarker(marker);
+    });
+
+    // Chargement initial des marqueurs
+    socket.emit('request_markers', roomCode); // On demande la liste
+    
+    socket.on('load_markers', (markers) => {
+        markersList.innerHTML = ''; // On vide
+        markers.forEach(m => displayMarker(m));
+    });
+    
 }
 
 document.addEventListener('DOMContentLoaded', init_room);

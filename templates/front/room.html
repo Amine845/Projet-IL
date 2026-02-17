@@ -101,6 +101,29 @@
             </div>
         </div>
 
+        <!-- ZONE D'ANALYSE (MARQUEURS) -->
+        <div class="card mt-3 floating-frame text-white bg-dark border-secondary">
+            <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Analyse Collaborative</h5>
+                <span id="current-time-display" class="badge bg-primary">00:00</span>
+            </div>
+            <div class="card-body">
+                <!-- Formulaire d'ajout -->
+                <div class="input-group mb-3">
+                    <button class="btn btn-outline-warning" type="button" id="btn-capture-time">Capturer</button>
+                    <input type="text" id="marker-input" class="form-control bg-secondary text-white border-secondary" placeholder="Ajouter une observation à ce moment...">
+                    <button class="btn btn-warning" type="button" id="btn-add-marker">Ajouter</button>
+                </div>
+
+                <!-- Liste des marqueurs -->
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <ul id="markers-list" class="list-group list-group-flush">
+                        <!-- Les marqueurs s'afficheront ici -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <!-- Colonne Droite : Chat & Users -->
         <div class="col-md-4" >
             <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;">

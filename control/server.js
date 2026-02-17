@@ -231,6 +231,64 @@ io.on('connection', (socket) => {
             }
         }
     });
+
+    // GESTION DES MARQUEURS (timestamp)
+
+    // 1. Ajouter un marqueur
+    socket.on('add_marker', async (data) => {
+        // data = { roomCode, username, timestamp, comment }
+        const { roomCode, username, timestamp, comment } = data;
+        const roomIdInt = parseInt(roomCode);
+
+        try {
+            // On récupère l'ID de l'utilisateur
+            const userRes = await pool.query('SELECT user_id FROM "user" WHERE username = $1', [username]);
+            
+            let userId = null;
+            if (userRes.rowCount > 0) userId = userRes.rows[0].user_id;
+
+            // Insertion en BDD
+            const insertQuery = `
+                INSERT INTO marker (room_id, user_id, timestamp_seconds, comment)
+                VALUES ($1, $2, $3, $4)
+                RETURNING marker_id, created_at
+            `;
+            const res = await pool.query(insertQuery, [roomIdInt, userId, timestamp, comment]);
+            
+            // On renvoie le marqueur complet à tout le monde
+            const newMarker = {
+                marker_id: res.rows[0].marker_id,
+                username: username,
+                timestamp_seconds: timestamp,
+                comment: comment
+            };
+            
+            io.to(roomCode).emit('new_marker', newMarker);
+
+        } catch (err) {
+            console.error("Erreur ajout marqueur:", err);
+        }
+    });
+
+    // 2. Récupérer les marqueurs (Appelé au chargement de la page)
+    socket.on('request_markers', async (roomCode) => {
+        const roomIdInt = parseInt(roomCode);
+        try {
+            const query = `
+                SELECT m.marker_id, m.timestamp_seconds, m.comment, u.username
+                FROM marker m
+                LEFT JOIN "user" u ON m.user_id = u.user_id
+                WHERE m.room_id = $1
+                ORDER BY m.timestamp_seconds ASC
+            `;
+            const res = await pool.query(query, [roomIdInt]);
+            // On renvoie seulement à celui qui a demandé
+            socket.emit('load_markers', res.rows);
+        } catch (err) {
+            console.error("Erreur chargement marqueurs:", err);
+        }
+    });
+
 });
 
 
