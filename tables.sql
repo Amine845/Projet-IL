@@ -36,3 +36,14 @@ CREATE TABLE video (
 INSERT INTO "user" (username, email, password, role) VALUES ('AdminTest', 'admin@test.com', '12345', 'admin');
 -- Note : Comme room a besoin d'un host_id qui vient d'être créé (ID 1), on peut créer la room maintenant.
 INSERT INTO room (room_id, name, host_id) VALUES (123456, 'Salon Test', 1);
+
+CREATE TABLE IF NOT EXISTS markers (
+    id SERIAL PRIMARY KEY,
+    room_code VARCHAR(50) NOT NULL,
+    video_id VARCHAR(50) NOT NULL,
+    user_id INTEGER REFERENCES "user"(id), -- Lien avec ta table users existante
+    timestamp_seconds FLOAT NOT NULL,      -- Le temps précis (ex: 124.5)
+    content TEXT,                          -- Le commentaire
+    category VARCHAR(20) DEFAULT 'Note',   -- Filtre: 'Note', 'Erreur', 'Important'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

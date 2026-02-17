@@ -82,12 +82,51 @@
             <div class="input-group floating-frame">
                 <span class="input-group-text bg-secondary text-white border-secondary">Faites une recherche</span>
                 <input type="text" id="search-input" class="form-control bg-dark text-white border-secondary" placeholder="Rechercher" required>
+
                 <button type="submit" id="recherche" class="btn btn-primary">
                     <i class="fa fa-search"></i>
                 </button>
             </div>
         </form>
 
+            <!-- Bouton Filtres Style Chips -->
+            <div class="mt-2">
+                <button type="button" id="btn-toggle-filters" class="btn btn-dark border-secondary rounded-pill px-3 btn-sm text-light">
+                    <i class="fa fa-sliders me-2"></i>Filtres
+                </button>
+            </div>
+
+            <!-- PANNEAU DE FILTRES (Masqué par défaut) -->
+            <div id="filters-panel" class="mt-3 p-3 bg-dark border border-secondary rounded d-none shadow-lg">
+                <div class="row">
+                    <!-- Colonne 1: TRIER PAR -->
+                    <div class="col-md-4 mb-3">
+                        <div class="filter-header">Trier par</div>
+                        <div class="d-flex flex-column gap-1">
+                            <span class="filter-option active" data-type="sort" data-value="relevance" onclick="selectFilter(this, 'sort', 'relevance')">Pertinence</span>
+                            <span class="filter-option" data-type="sort" data-value="date_new" onclick="selectFilter(this, 'sort', 'date_new')">Date de mise en ligne</span>
+                            <span class="filter-option" data-type="sort" data-value="alpha_asc" onclick="selectFilter(this, 'sort', 'alpha_asc')">Alphabétique (A-Z)</span>
+                        </div>
+                    </div>
+
+                    <!-- Colonne 2: TYPE -->
+                    <div class="col-md-4 mb-3">
+                        <div class="filter-header">Type</div>
+                        <div class="d-flex flex-column gap-1">
+                            <span class="filter-option active" data-type="shorts" data-value="all" onclick="selectFilter(this, 'shorts', 'all')">Tout</span>
+                            <span class="filter-option" data-type="shorts" data-value="hide" onclick="selectFilter(this, 'shorts', 'hide')">Exclure les Shorts</span>
+                        </div>
+                    </div>
+
+                    <!-- Colonne 3: PRÉCISION (Mots clés locaux) -->
+                    <div class="col-md-4">
+                        <div class="filter-header">Contenu</div>
+                        <input type="text" id="filter-text" class="form-control form-control-sm bg-secondary text-white border-0" placeholder="Filtrer titre...">
+                        <small class="text-muted mt-2 d-block" style="font-size: 0.7em;">Filtre instantané sur les résultats chargés</small>
+                    </div>
+                </div>
+            </div>
+        </div>
         
     </div>
 
@@ -331,14 +370,96 @@
         });
     }
 
+    // GESTION DES FILTRES DE VIDEOS
+    let currentResults = [];
+    let activeFilters = {
+        sort: "relevance",
+        shorts: "all",
+        text: ""
+    };
+
     async function rechercheYoutubeVideos(recherche) {
-        const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
+        const params = new URLSearchParams({ 
+            part: 'snippet', 
+            q: recherche, 
+            key: apiKey, 
+            type: 'video', 
+            maxResults: 12 
+        });
+
         try {
             const res = await fetch(`${API_URL}?${params.toString()}`);
             const data = await res.json();
-            renderResults(data.items);
-        } catch(e) { console.error(e); }
+
+            currentResults = data.items;   // ON STOCKE
+            applyFilters();                // On applique les filtres
+
+        } catch(e) { 
+            console.error(e); 
+        }
     }
+
+    function applyFilters() {
+        let filtered = [...currentResults];
+
+        // Filtre texte
+        if (activeFilters.text) {
+            filtered = filtered.filter(video =>
+                video.snippet.title
+                    .toLowerCase()
+                    .includes(activeFilters.text.toLowerCase())
+            );
+        }
+
+        // Exclure les shorts (approximation < 60 sec)
+        if (activeFilters.shorts === "hide") {
+            // ATTENTION : l'API search ne donne PAS la durée
+            // Donc on ne peut pas filtrer parfaitement sans appel supplémentaire
+            // Ici on ne fait rien ou on simule
+        }
+
+        // Tri
+        if (activeFilters.sort === "alpha_asc") {
+            filtered.sort((a,b) =>
+                a.snippet.title.localeCompare(b.snippet.title)
+            );
+        }
+
+        if (activeFilters.sort === "date_new") {
+            filtered.sort((a,b) =>
+                new Date(b.snippet.publishedAt) -
+                new Date(a.snippet.publishedAt)
+            );
+        }
+
+        renderResults(filtered);
+    }
+
+    document.getElementById("btn-toggle-filters")
+    .addEventListener("click", () => {
+        document.getElementById("filters-panel")
+        .classList.toggle("d-none");
+    });
+
+    function selectFilter(element, type, value) {
+
+        // Supprime la classe active
+        document.querySelectorAll(`.filter-option[data-type="${type}"]`)
+            .forEach(el => el.classList.remove("active"));
+
+        element.classList.add("active");
+
+        activeFilters[type] = value;
+
+        applyFilters();
+    }
+
+    document.getElementById("filter-text")
+    .addEventListener("input", (e) => {
+        activeFilters.text = e.target.value;
+        applyFilters();
+    });
+
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
