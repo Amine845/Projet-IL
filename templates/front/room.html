@@ -125,6 +125,28 @@
                         <small class="text-muted mt-2 d-block" style="font-size: 0.7em;">Filtre instantané sur les résultats chargés</small>
                     </div>
                 </div>
+                <!-- Colonne 4 : DURÉE -->
+                <div class="col-md-4 mb-3">
+                    <div class="filter-header">Durée</div>
+                    <div class="d-flex flex-column gap-1">
+                        <span class="filter-option active" data-type="duration" onclick="selectFilter(this,'duration','all')">Toutes</span>
+                        <span class="filter-option" data-type="duration" onclick="selectFilter(this,'duration','short')">Moins de 3 minutes</span>
+                        <span class="filter-option" data-type="duration" onclick="selectFilter(this,'duration','medium')">3 à 20 minutes</span>
+                        <span class="filter-option" data-type="duration" onclick="selectFilter(this,'duration','long')">Plus de 20 minutes</span>
+                    </div>
+                </div>
+
+                <!-- Colonne 5 : DATE -->
+                <div class="col-md-4 mb-3">
+                    <div class="filter-header">Date d'ajout</div>
+                    <div class="d-flex flex-column gap-1">
+                        <span class="filter-option active" data-type="uploadDate" onclick="selectFilter(this,'uploadDate','all')">Toutes</span>
+                        <span class="filter-option" data-type="uploadDate" onclick="selectFilter(this,'uploadDate','today')">Aujourd'hui</span>
+                        <span class="filter-option" data-type="uploadDate" onclick="selectFilter(this,'uploadDate','week')">Cette semaine</span>
+                        <span class="filter-option" data-type="uploadDate" onclick="selectFilter(this,'uploadDate','month')">Ce mois-ci</span>
+                        <span class="filter-option" data-type="uploadDate" onclick="selectFilter(this,'uploadDate','year')">Cette année</span>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -375,8 +397,35 @@
     let activeFilters = {
         sort: "relevance",
         shorts: "all",
-        text: ""
+        text: "",
+        duration: "all",
+        uploadDate: "all"
     };
+
+    async function fetchVideoDurations(videoIds) {
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds.join(",")}&key=${apiKey}`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const map = {};
+
+        data.items.forEach(v => {
+            map[v.id] = v.contentDetails.duration;
+        });
+
+        return map;
+    }
+
+    function parseDuration(duration) {
+        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+
+        const hours = parseInt(match[1]) || 0;
+        const minutes = parseInt(match[2]) || 0;
+        const seconds = parseInt(match[3]) || 0;
+
+        return hours*3600 + minutes*60 + seconds;
+    }
 
     async function rechercheYoutubeVideos(recherche) {
         const params = new URLSearchParams({ 
@@ -391,8 +440,17 @@
             const res = await fetch(`${API_URL}?${params.toString()}`);
             const data = await res.json();
 
-            currentResults = data.items;   // ON STOCKE
-            applyFilters();                // On applique les filtres
+            const ids = data.items.map(v => v.id.videoId);
+
+            const durations = await fetchVideoDurations(ids);
+
+            data.items.forEach(v => {
+                const iso = durations[v.id.videoId];
+                v.durationSec = parseDuration(iso);
+            });
+
+            currentResults = data.items;
+            applyFilters();
 
         } catch(e) { 
             console.error(e); 
@@ -430,6 +488,36 @@
                 new Date(b.snippet.publishedAt) -
                 new Date(a.snippet.publishedAt)
             );
+        }
+
+        // FILTRE DURÉE
+        if (activeFilters.duration !== "all") {
+            filtered = filtered.filter(video => {
+                const d = video.durationSec;
+
+                if (activeFilters.duration === "short") return d < 180;
+                if (activeFilters.duration === "medium") return d >= 180 && d <= 1200;
+                if (activeFilters.duration === "long") return d > 1200;
+
+                return true;
+            });
+        }
+
+        // FILTRE DATE
+        if (activeFilters.uploadDate !== "all") {
+            const now = new Date();
+
+            filtered = filtered.filter(video => {
+                const date = new Date(video.snippet.publishedAt);
+                const diff = (now - date) / (1000*60*60*24);
+
+                if (activeFilters.uploadDate === "today") return diff < 1;
+                if (activeFilters.uploadDate === "week") return diff < 7;
+                if (activeFilters.uploadDate === "month") return diff < 30;
+                if (activeFilters.uploadDate === "year") return diff < 365;
+
+                return true;
+            });
         }
 
         renderResults(filtered);
