@@ -288,12 +288,14 @@ function init_room() {
             if (!comment || !window.player) return;
 
             const currentTime = window.player.getCurrentTime();
+            const category = document.getElementById('marker-category').value;
 
             socket.emit('add_marker', {
                 roomCode: roomCode,
                 username: username,
                 timestamp: currentTime,
-                comment: comment
+                comment: comment,
+                category: category
             });
 
             markerInput.value = ''; // Vider le champ
@@ -302,13 +304,25 @@ function init_room() {
 
     // 2. Afficher un marqueur dans la liste
     function displayMarker(marker) {
+        // console.log("Données du marqueur reçu :", marker); // DEBUG : à vérifier dans la console F12
+
         const li = document.createElement('li');
         li.className = "list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center marker-item";
         li.style.cursor = "pointer";
+
+        // map des couleurs
+        const colorMap = {
+            'info': 'bg-primary',   // Bleu
+            'success': 'bg-success', // Vert
+            'danger': 'bg-danger',   // Rouge
+            'warning': 'bg-warning'  // Jaune
+        };
+
+        const badgeColor = colorMap[marker.category] || 'bg-primary';
         
         li.innerHTML = `
             <div>
-                <span class="badge bg-info me-2">${formatTime(marker.timestamp_seconds)}</span>
+                <span class="badge ${badgeColor} me-2">${formatTime(marker.timestamp_seconds)}</span>
                 <strong>${marker.username} :</strong> ${marker.comment}
             </div>
             <small class="text-muted">▶️</small>

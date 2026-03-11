@@ -236,8 +236,7 @@ io.on('connection', (socket) => {
 
     // 1. Ajouter un marqueur
     socket.on('add_marker', async (data) => {
-        // data = { roomCode, username, timestamp, comment }
-        const { roomCode, username, timestamp, comment } = data;
+        const { roomCode, username, timestamp, comment, category } = data;
         const roomIdInt = parseInt(roomCode);
 
         try {
@@ -249,18 +248,21 @@ io.on('connection', (socket) => {
 
             // Insertion en BDD
             const insertQuery = `
-                INSERT INTO marker (room_id, user_id, timestamp_seconds, comment)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO marker (room_id, user_id, timestamp_seconds, comment, category)
+                VALUES ($1, $2, $3, $4, $5)
                 RETURNING marker_id, created_at
             `;
-            const res = await pool.query(insertQuery, [roomIdInt, userId, timestamp, comment]);
+
+
+            const res = await pool.query(insertQuery, [roomIdInt, userId, timestamp, comment, category]);
             
             // On renvoie le marqueur complet à tout le monde
             const newMarker = {
                 marker_id: res.rows[0].marker_id,
                 username: username,
                 timestamp_seconds: timestamp,
-                comment: comment
+                comment: comment,
+                category: category
             };
             
             io.to(roomCode).emit('new_marker', newMarker);
@@ -275,7 +277,7 @@ io.on('connection', (socket) => {
         const roomIdInt = parseInt(roomCode);
         try {
             const query = `
-                SELECT m.marker_id, m.timestamp_seconds, m.comment, u.username
+                SELECT m.marker_id, m.timestamp_seconds, m.comment, m.category, u.username
                 FROM marker m
                 LEFT JOIN "user" u ON m.user_id = u.user_id
                 WHERE m.room_id = $1

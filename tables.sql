@@ -100,6 +100,8 @@ CREATE TABLE marker (
     
     -- Le contenu du commentaire
     comment TEXT NOT NULL,
+
+    category VARCHAR(20) DEFAULT "info",
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

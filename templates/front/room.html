@@ -111,6 +111,12 @@
                 <!-- Formulaire d'ajout -->
                 <div class="input-group mb-3">
                     <button class="btn btn-outline-warning" type="button" id="btn-capture-time">Capturer</button>
+                        <select id="marker-category" class="form-select bg-dark text-white border-secondary" style="max-width: 130px;">
+                            <option value="info" selected>Note</option>
+                            <option value="success">Positif</option>
+                            <option value="danger">Erreur</option>
+                            <option value="warning">Alerte</option>
+                        </select>
                     <input type="text" id="marker-input" class="form-control bg-secondary text-white border-secondary" placeholder="Ajouter une observation à ce moment...">
                     <button class="btn btn-warning" type="button" id="btn-add-marker">Ajouter</button>
                 </div>
