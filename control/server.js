@@ -1,7 +1,5 @@
 // control/server.js
 
-// Test pour pull request
-
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
