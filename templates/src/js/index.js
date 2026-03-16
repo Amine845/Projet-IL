@@ -14,7 +14,7 @@ function init_index() {
         const savedUser = localStorage.getItem('streamSquad_user');
         
         if (savedUser) {
-            // === MODE CONNECTÉ ===
+            // MODE CONNECTÉ
             if(navGuest) navGuest.classList.add('d-none');
             if(navLogged) navLogged.classList.remove('d-none');
             if(navUserDisplay) navUserDisplay.textContent = `👤 ${savedUser}`;
@@ -31,7 +31,7 @@ function init_index() {
                 usernameInput.title = "Déconnectez-vous pour changer de pseudo";
             }
         } else {
-            // === MODE INVITÉ ===
+            // MODE INVITÉ
             if(navGuest) navGuest.classList.remove('d-none');
             if(navLogged) navLogged.classList.add('d-none');
             

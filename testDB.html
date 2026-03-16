@@ -4,23 +4,32 @@
     <meta charset="UTF-8">
     <title>Visualisation Salles & Utilisateurs</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #222; color: white; }
+        .floating-frame { border-radius: 10px; box-shadow: black 0px 0px 20px; background-color: rgba(30, 30, 30, 0.9); }
+        .table-dark { --bs-table-bg: transparent; }
+    </style>
 </head>
-<body class="bg-dark text-white p-5">
+<body class="p-5" style="background-image: url(/templates/src/background2.png); background-size: cover; background-attachment: fixed;">
 
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-5">
+    <div class="container floating-frame p-4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
             <h1 class="text-warning mb-0">État de la Base de Données</h1>
-            <button id="btn-refresh" class="btn btn-primary btn-lg">Actualiser Tout</button>
+            <div>
+                <a href="/" class="btn btn-outline-light me-2">Retour au site</a>
+                <button id="btn-refresh" class="btn btn-primary">Actualiser Tout</button>
+            </div>
         </div>
         
         <!-- SECTION 1 : SALLES -->
-        <h3 class="text-info border-bottom border-secondary pb-2 mb-3">1. Utilisateurs actifs (Par Salle)</h3>
-        <div class="card bg-secondary border-0 mb-5">
-            <div class="card-body">
-                <table class="table table-dark table-striped align-middle mb-0">
+        <h4 class="text-info mb-3">1. Utilisateurs actifs (Par Salle)</h4>
+        <div class="card bg-dark border-secondary mb-5">
+            <div class="card-body p-0">
+                <table class="table table-dark table-striped align-middle mb-0" style="border-radius: 10px; overflow: hidden;">
                     <thead>
                         <tr>
-                            <th style="width: 20%;">ID Salle</th>
+                            <th class="ps-3" style="width: 15%;">ID Salle</th>
                             <th>Utilisateurs connectés</th>
                         </tr>
                     </thead>
@@ -30,13 +39,13 @@
         </div>
 
         <!-- SECTION 2 : COMPTES -->
-        <h3 class="text-info border-bottom border-secondary pb-2 mb-3">2. Tous les Comptes (Table "user")</h3>
-        <div class="card bg-secondary border-0">
-            <div class="card-body">
-                <table class="table table-dark table-striped align-middle mb-0">
+        <h4 class="text-info mb-3">2. Tous les Comptes (Table "user")</h4>
+        <div class="card bg-dark border-secondary mb-5">
+            <div class="card-body p-0">
+                <table class="table table-dark table-striped align-middle mb-0" style="border-radius: 10px; overflow: hidden;">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th class="ps-3">ID</th>
                             <th>Pseudo</th>
                             <th>Email</th>
                             <th>Rôle</th>
@@ -46,16 +55,41 @@
                 </table>
             </div>
         </div>
+
+        <!-- SECTION 3 : MARQUEURS -->
+        <h4 class="text-info mb-3">3. Analyses / Marqueurs (Par Salle)</h4>
+        <div class="card bg-dark border-secondary">
+            <div class="card-body p-0">
+                <table class="table table-dark table-striped align-middle mb-0" style="border-radius: 10px; overflow: hidden;">
+                    <thead>
+                        <tr>
+                            <th class="ps-3" style="width: 15%;">ID Salle</th>
+                            <th>Marqueurs enregistrés</th>
+                        </tr>
+                    </thead>
+                    <tbody id="markers-content"></tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <script>
         const roomsTbody = document.getElementById('rooms-content');
         const usersTbody = document.getElementById('users-content');
+        const markersTbody = document.getElementById('markers-content');
         const btn = document.getElementById('btn-refresh');
 
-        // --- CHARGEMENT DES SALLES (EXISTANT) ---
+        // Formater les secondes en MM:SS
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+        }
+
+        // --- CHARGEMENT DES SALLES ---
         async function loadRooms() {
-            roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-white">Chargement...</td></tr>';
+            roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-light">Chargement...</td></tr>';
             try {
                 const response = await fetch('/api/rooms-users');
                 const data = await response.json();
@@ -68,7 +102,7 @@
 
                 const roomsMap = {};
                 data.forEach(row => {
-                    if (!roomsMap[row.room_id]) roomsMap[row.room_id] = [];
+                    if (!roomsMap[row.room_id]) roomsMap[row.room_id] =[];
                     roomsMap[row.room_id].push({ username: row.username, email: row.email });
                 });
 
@@ -76,14 +110,14 @@
                     let usersHtml = '<ul class="list-group list-group-flush rounded">';
                     users.forEach(u => {
                         usersHtml += `
-                            <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
-                                <span class="fw-bold text-success">${u.username}</span>
-                                <span class="small text-info ms-3">${u.email}</span>
+                            <li class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center px-0">
+                                <span class="fw-bold text-success">● ${u.username}</span>
+                                <span class="small text-info">${u.email}</span>
                             </li>`;
                     });
                     usersHtml += '</ul>';
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="fw-bold text-warning fs-5">#${roomId}</td><td>${usersHtml}</td>`;
+                    tr.innerHTML = `<td class="fw-bold text-warning fs-5 ps-3">#${roomId}</td><td>${usersHtml}</td>`;
                     roomsTbody.appendChild(tr);
                 }
             } catch (error) {
@@ -92,11 +126,11 @@
             }
         }
 
-        // --- CHARGEMENT DES COMPTES (NOUVEAU) ---
+        // --- CHARGEMENT DES COMPTES ---
         async function loadAllUsers() {
-            usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-white">Chargement...</td></tr>';
+            usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-light">Chargement...</td></tr>';
             try {
-                const response = await fetch('/api/all-users'); // Appel nouvelle API
+                const response = await fetch('/api/all-users'); 
                 const data = await response.json();
                 usersTbody.innerHTML = '';
 
@@ -106,12 +140,13 @@
                 }
 
                 data.forEach(user => {
+                    const roleBadge = user.role === 'guest' ? 'bg-secondary' : 'bg-primary';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${user.user_id}</td>
-                        <td class="fw-bold">${user.username}</td>
+                        <td class="ps-3">${user.user_id}</td>
+                        <td class="fw-bold text-white">${user.username}</td>
                         <td class="text-info">${user.email}</td>
-                        <td><span class="badge bg-light text-dark">${user.role}</span></td>
+                        <td><span class="badge ${roleBadge}">${user.role}</span></td>
                     `;
                     usersTbody.appendChild(tr);
                 });
@@ -121,13 +156,63 @@
             }
         }
 
-        // Fonction globale
+        // --- CHARGEMENT DES MARQUEURS ---
+        async function loadAllMarkers() {
+            markersTbody.innerHTML = '<tr><td colspan="2" class="text-center text-light">Chargement...</td></tr>';
+            try {
+                const response = await fetch('/api/all-markers'); 
+                const data = await response.json();
+                markersTbody.innerHTML = '';
+
+                if(data.length === 0) {
+                    markersTbody.innerHTML = '<tr><td colspan="2" class="text-center text-white fst-italic">Aucun marqueur enregistré.</td></tr>';
+                    return;
+                }
+
+                const markersMap = {};
+                data.forEach(row => {
+                    if (!markersMap[row.room_id]) markersMap[row.room_id] = [];
+                    markersMap[row.room_id].push(row);
+                });
+
+                const colorMap = {
+                    'info': 'bg-primary',
+                    'success': 'bg-success',
+                    'danger': 'bg-danger',
+                    'warning': 'bg-warning'
+                };
+
+                for (const [roomId, markers] of Object.entries(markersMap)) {
+                    let markersHtml = '<ul class="list-group list-group-flush rounded">';
+                    markers.forEach(m => {
+                        const badgeColor = colorMap[m.category] || 'bg-primary';
+                        const author = m.username ? m.username : '<span class="text-muted fst-italic">Utilisateur supprimé</span>';
+
+                        markersHtml += `
+                            <li class="list-group-item bg-transparent text-white border-secondary d-flex align-items-center px-0">
+                                <span class="badge ${badgeColor} me-3" style="min-width: 50px;">${formatTime(m.timestamp_seconds)}</span>
+                                <span class="fw-bold text-light me-2">${author} :</span>
+                                <span class="text-white-50">${m.comment}</span>
+                            </li>`;
+                    });
+                    markersHtml += '</ul>';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="fw-bold text-warning fs-5 ps-3">#${roomId}</td><td>${markersHtml}</td>`;
+                    markersTbody.appendChild(tr);
+                }
+            } catch (error) {
+                console.error(error);
+                markersTbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Erreur API Marqueurs</td></tr>';
+            }
+        }
+
+        // --- GLOBAL ---
         function refreshAll() {
             loadRooms();
             loadAllUsers();
+            loadAllMarkers();
         }
 
-        // Lancement
         refreshAll();
         btn.addEventListener('click', refreshAll);
     </script>

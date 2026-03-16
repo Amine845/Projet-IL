@@ -2,7 +2,6 @@ function init_room() {
 
     const socket = io();
 
-    // 1. Récupérer les infos depuis l'URL
     const params = new URLSearchParams(window.location.search);
     const roomCode = params.get('room');
     const username = params.get('user');
@@ -15,10 +14,10 @@ function init_room() {
     const displayCode = document.getElementById('display-code');
     if(displayCode) displayCode.textContent = roomCode;
 
-    // 2. Se connecter au salon
     socket.emit('join_room', { roomCode, username });
+    socket.emit('request_markers', roomCode);
 
-    // --- VARIABLES DOM ---
+    // --- VARIABLES DOM CHAT ---
     const chatBox = document.getElementById('chat-box');
     const usersList = document.getElementById('users-list');
     const msgInput = document.getElementById('msg-input');
@@ -34,23 +33,19 @@ function init_room() {
         }
     });
 
-    // --- GESTION RECEPTION MESSAGE ---
     socket.on('receive_message', (data) => {
         if (!chatBox) return;
         const div = document.createElement('div');
-
         if (data.isSystem) {
             div.className = 'system-msg';
             div.textContent = data.text;
         } else {
             div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
         }
-
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // --- ENVOI MESSAGE ---
     function sendMessage() {
         if (msgInput && msgInput.value.trim()) {
             socket.emit('send_message', { roomCode, username, text: msgInput.value });
@@ -61,44 +56,33 @@ function init_room() {
     if (btnSend) btnSend.addEventListener('click', sendMessage);
     if (msgInput) {
         msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-        // Typing
-        msgInput.addEventListener('input', () => {
-            socket.emit('typing', { roomCode, username });
-        });
+        msgInput.addEventListener('input', () => socket.emit('typing', { roomCode, username }));
     }
 
-    // Typing reception
     let typingTimer;
     socket.on('user_typing', (userTyping) => {
         if (typingIndicator) {
             typingIndicator.textContent = `${userTyping} est en train d'écrire...`;
             clearTimeout(typingTimer);
-            typingTimer = setTimeout(() => {
-                typingIndicator.textContent = '';
-            }, 3000);
+            typingTimer = setTimeout(() => { typingIndicator.textContent = ''; }, 3000);
         }
     });
 
     // --- YOUTUBE API ---
-    // On doit attacher la fonction à window pour que l'API Google la trouve
     window.onYouTubeIframeAPIReady = function() {
         window.player = new YT.Player('player', {
             height: '100%',
             width: '100%',
-            videoId: '3y5H4XINDEU', // Vidéo par défaut
+            videoId: '3y5H4XINDEU', 
             playerVars: { 'autoplay': 0, 'controls': 1 },
-            events: {
-                'onStateChange': onPlayerStateChange
-            }
+            events: { 'onStateChange': onPlayerStateChange }
         });
     };
 
-    // Chargement du script API YouTube
     var tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     var firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
 
     // --- SYNC VIDEO ---
     let currentController = null;
@@ -106,9 +90,7 @@ function init_room() {
 
     const btnControl = document.getElementById('btn-control');
     if (btnControl) {
-        btnControl.addEventListener('click', () => {
-            socket.emit('claim_control', { roomCode, username });
-        });
+        btnControl.addEventListener('click', () => socket.emit('claim_control', { roomCode, username }));
     }
 
     socket.on('update_controller', (name) => {
@@ -118,67 +100,49 @@ function init_room() {
     });
 
     socket.on('load_video', (videoId) => {
-        if (window.player && window.player.loadVideoById) {
-            window.player.loadVideoById(videoId);
-        }
+        if (window.player && window.player.loadVideoById) window.player.loadVideoById(videoId);
     });
 
     function onPlayerStateChange(event) {
         if (currentController === username && !isSyncing) {
             let state = event.data;
             let time = window.player.getCurrentTime();
-
-            if (state === YT.PlayerState.PLAYING) {
-                socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
-            } else if (state === YT.PlayerState.PAUSED) {
-                socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
-            }
+            if (state === YT.PlayerState.PLAYING) socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
+            else if (state === YT.PlayerState.PAUSED) socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
         }
     }
 
     socket.on('sync_video', (data) => {
         if (!window.player || !window.player.seekTo) return;
-
         isSyncing = true;
         if (Math.abs(window.player.getCurrentTime() - data.currentTime) > 1) {
             window.player.seekTo(data.currentTime);
         }
         if (data.type === 'play') window.player.playVideo();
         else if (data.type === 'pause') window.player.pauseVideo();
-
         setTimeout(() => { isSyncing = false; }, 500);
     });
 
-
     // --- PLAYLIST ---
     const playlistList = document.getElementById('playlist-list');
-    let playlist = [];
+    let playlist =[];
 
     function renderPlaylist() {
         if (!playlistList) return;
         playlistList.innerHTML = "";
-
         if (playlist.length === 0) {
-            playlistList.innerHTML = `
-            <li class="list-group-item bg-dark text-muted text-center small border-secondary">
-                Aucune vidéo dans la playlist.
-            </li>`;
+            playlistList.innerHTML = `<li class="list-group-item bg-dark text-muted text-center small border-secondary">Aucune vidéo dans la playlist.</li>`;
             return;
         }
 
         playlist.forEach((video, index) => {
             const li = document.createElement("li");
             li.className = "list-group-item bg-dark border-secondary text-white d-flex justify-content-between align-items-center";
-            li.innerHTML = `
-            <span style="cursor:pointer;" class="video-play" data-index="${index}">
-                ${video.title}
-            </span>
-            <button class="btn btn-sm btn-outline-danger remove-video" data-index="${index}">X</button>
-        `;
+            li.innerHTML = `<span style="cursor:pointer;" class="video-play text-primary" data-index="${index}">${video.title}</span>
+            <button class="btn btn-sm btn-outline-danger remove-video" data-index="${index}">X</button>`;
             playlistList.appendChild(li);
         });
 
-        // Events Playlist
         document.querySelectorAll(".video-play").forEach(el => {
             el.addEventListener("click", () => {
                 const v = playlist[el.dataset.index];
@@ -207,12 +171,15 @@ function init_room() {
         });
     }
 
-    // --- RECHERCHE ---
+    // --- RECHERCHE ET FILTRES ---
     const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU";
     const API_URL = "https://www.googleapis.com/youtube/v3/search";
     const formSearch = document.getElementById('search-form');
     const inputSearch = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
+
+    let currentResults =[];
+    let activeFilters = { sort: "relevance", shorts: "all", text: "", duration: "all", uploadDate: "all" };
 
     function videoRecherchee(video) {
         const videoId = video.id.videoId;
@@ -231,7 +198,7 @@ function init_room() {
     }
 
     function renderResults(items) {
-        if (!items) return;
+        if (!items || !resultsContainer) return;
         resultsContainer.innerHTML = items.map(videoRecherchee).join('');
         resultsContainer.scrollIntoView({ behavior: "smooth" });
 
@@ -243,13 +210,93 @@ function init_room() {
         });
     }
 
+    async function fetchVideoDurations(videoIds) {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds.join(",")}&key=${apiKey}`);
+        const data = await res.json();
+        const map = {};
+        data.items.forEach(v => { map[v.id] = v.contentDetails.duration; });
+        return map;
+    }
+
+    function parseDuration(duration) {
+        if (!duration) return 0;
+        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const hours = parseInt(match[1]) || 0;
+        const minutes = parseInt(match[2]) || 0;
+        const seconds = parseInt(match[3]) || 0;
+        return hours*3600 + minutes*60 + seconds;
+    }
+
+    function applyFilters() {
+        let filtered = [...currentResults];
+
+        if (activeFilters.text) filtered = filtered.filter(v => v.snippet.title.toLowerCase().includes(activeFilters.text.toLowerCase()));
+        if (activeFilters.sort === "alpha_asc") filtered.sort((a,b) => a.snippet.title.localeCompare(b.snippet.title));
+        if (activeFilters.sort === "date_new") filtered.sort((a,b) => new Date(b.snippet.publishedAt) - new Date(a.snippet.publishedAt));
+
+        if (activeFilters.duration !== "all") {
+            filtered = filtered.filter(v => {
+                const d = v.durationSec;
+                if (activeFilters.duration === "short") return d < 180;
+                if (activeFilters.duration === "medium") return d >= 180 && d <= 1200;
+                if (activeFilters.duration === "long") return d > 1200;
+                return true;
+            });
+        }
+
+        if (activeFilters.uploadDate !== "all") {
+            const now = new Date();
+            filtered = filtered.filter(v => {
+                const diff = (now - new Date(v.snippet.publishedAt)) / (1000*60*60*24);
+                if (activeFilters.uploadDate === "today") return diff < 1;
+                if (activeFilters.uploadDate === "week") return diff < 7;
+                if (activeFilters.uploadDate === "month") return diff < 30;
+                if (activeFilters.uploadDate === "year") return diff < 365;
+                return true;
+            });
+        }
+        renderResults(filtered);
+    }
+
+    function resetFilters() {
+        activeFilters = { sort: "relevance", shorts: "all", text: "", duration: "all", uploadDate: "all" };
+        document.querySelectorAll(".filter-option").forEach(el => el.classList.remove("text-primary", "fw-bold"));
+        document.getElementById("filter-text").value = "";
+        applyFilters();
+    }
+
+    const btnToggleFilters = document.getElementById("btn-toggle-filters");
+    if(btnToggleFilters) btnToggleFilters.addEventListener("click", () => document.getElementById("filters-panel").classList.toggle("d-none"));
+    
+    const btnResetFilters = document.getElementById("reset-filters");
+    if(btnResetFilters) btnResetFilters.addEventListener("click", resetFilters);
+
+    document.querySelectorAll(".filter-option").forEach(el => {
+        el.addEventListener("click", () => {
+            const type = el.dataset.type;
+            const val = el.dataset.value;
+            document.querySelectorAll(`.filter-option[data-type="${type}"]`).forEach(e => e.classList.remove("text-primary", "fw-bold"));
+            el.classList.add("text-primary", "fw-bold");
+            activeFilters[type] = val;
+            applyFilters();
+        });
+    });
+
+    const filterText = document.getElementById("filter-text");
+    if(filterText) filterText.addEventListener("input", (e) => { activeFilters.text = e.target.value; applyFilters(); });
+
     async function rechercheYoutubeVideos(recherche) {
+        resetFilters();
         const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
         try {
             const res = await fetch(`${API_URL}?${params.toString()}`);
             const data = await res.json();
-            renderResults(data.items);
-        } catch (e) { console.error(e); }
+            const ids = data.items.map(v => v.id.videoId);
+            const durations = await fetchVideoDurations(ids);
+            data.items.forEach(v => { v.durationSec = parseDuration(durations[v.id.videoId]); });
+            currentResults = data.items;
+            applyFilters();
+        } catch(e) { console.error(e); }
     }
 
     if (formSearch) {
@@ -259,99 +306,77 @@ function init_room() {
         });
     }
 
-
-    // --- GESTION DES MARQUEURS / ANALYSE ---
-    const markersList = document.getElementById('markers-list');
+    // --- GESTION DES MARQUEURS ---
     const markerInput = document.getElementById('marker-input');
+    const markerCategory = document.getElementById('marker-category');
     const btnAddMarker = document.getElementById('btn-add-marker');
-    const timeDisplay = document.getElementById('current-time-display');
+    const btnCaptureTime = document.getElementById('btn-capture-time');
+    const markersList = document.getElementById('markers-list');
+    const currentTimeDisplay = document.getElementById('current-time-display');
 
-    // Utilitaire : Convertir secondes en MM:SS
     function formatTime(seconds) {
         const min = Math.floor(seconds / 60);
         const sec = Math.floor(seconds % 60);
         return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
     }
 
-    // Mettre à jour l'affichage du temps quand la vidéo joue
+    let capturedTimestamp = null;
+
     setInterval(() => {
         if (window.player && window.player.getCurrentTime) {
-            const t = window.player.getCurrentTime();
-            if(timeDisplay) timeDisplay.textContent = formatTime(t);
+            if(currentTimeDisplay) currentTimeDisplay.textContent = formatTime(window.player.getCurrentTime());
         }
     }, 1000);
 
-    // 1. Envoyer un marqueur
-    if (btnAddMarker) {
-        btnAddMarker.addEventListener('click', () => {
-            const comment = markerInput.value.trim();
-            if (!comment || !window.player) return;
-
-            const currentTime = window.player.getCurrentTime();
-            const category = document.getElementById('marker-category').value;
-
-            socket.emit('add_marker', {
-                roomCode: roomCode,
-                username: username,
-                timestamp: currentTime,
-                comment: comment,
-                category: category
-            });
-
-            markerInput.value = ''; // Vider le champ
-        });
-    }
-
-    // 2. Afficher un marqueur dans la liste
-    function displayMarker(marker) {
-        // console.log("Données du marqueur reçu :", marker); // DEBUG : à vérifier dans la console F12
-
-        const li = document.createElement('li');
-        li.className = "list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center marker-item";
-        li.style.cursor = "pointer";
-
-        // map des couleurs
-        const colorMap = {
-            'info': 'bg-primary',   // Bleu
-            'success': 'bg-success', // Vert
-            'danger': 'bg-danger',   // Rouge
-            'warning': 'bg-warning'  // Jaune
-        };
-
-        const badgeColor = colorMap[marker.category] || 'bg-primary';
-        
-        li.innerHTML = `
-            <div>
-                <span class="badge ${badgeColor} me-2">${formatTime(marker.timestamp_seconds)}</span>
-                <strong>${marker.username} :</strong> ${marker.comment}
-            </div>
-            <small class="text-muted">▶️</small>
-        `;
-
-        // Clic sur le marqueur = Saut dans la vidéo
-        li.addEventListener('click', () => {
-            if (window.player && window.player.seekTo) {
-                window.player.seekTo(marker.timestamp_seconds, true);
-                window.player.playVideo();
+    if (btnCaptureTime) {
+        btnCaptureTime.addEventListener('click', () => {
+            if (window.player && window.player.getCurrentTime) {
+                capturedTimestamp = window.player.getCurrentTime();
+                btnCaptureTime.classList.replace('btn-outline-warning', 'btn-warning');
+                markerInput.placeholder = `Note pour ${formatTime(capturedTimestamp)}...`;
+                markerInput.focus();
             }
         });
-
-        markersList.prepend(li); // Ajoute au début (le plus récent en haut)
     }
 
-    // Réception d'un nouveau marqueur (Temps réel)
-    socket.on('new_marker', (marker) => {
-        displayMarker(marker);
+    function addMarker() {
+        if (!markerInput.value.trim() || !window.player) return;
+        const timeToSend = (capturedTimestamp !== null) ? capturedTimestamp : window.player.getCurrentTime();
+
+        socket.emit('add_marker', {
+            roomCode: roomCode,
+            username: username,
+            timestamp: timeToSend,
+            comment: markerInput.value.trim(),
+            category: markerCategory.value
+        });
+
+        markerInput.value = '';
+        markerInput.placeholder = "Ajouter une observation à ce moment...";
+        capturedTimestamp = null;
+        if(btnCaptureTime) btnCaptureTime.classList.replace('btn-warning', 'btn-outline-warning');
+    }
+
+    if (btnAddMarker) btnAddMarker.addEventListener('click', addMarker);
+    if (markerInput) markerInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') addMarker(); });
+
+    socket.on('update_markers', (markers) => {
+        if (!markersList) return;
+        markersList.innerHTML = markers.map(m => {
+            const colorMap = { 'info': 'bg-primary', 'success': 'bg-success', 'danger': 'bg-danger', 'warning': 'bg-warning' };
+            const badgeColor = colorMap[m.category] || 'bg-primary';
+            return `
+                <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+                    <span>
+                        <span class="badge ${badgeColor} me-2" style="cursor:pointer" onclick="if(window.player) { window.player.seekTo(${m.timestamp_seconds}, true); window.player.playVideo(); }">
+                            ${formatTime(m.timestamp_seconds)}
+                        </span>
+                        <strong>${m.username}:</strong> ${m.comment}
+                    </span>
+                </li>`;
+        }).join('');
     });
 
-    // Chargement initial des marqueurs
-    socket.emit('request_markers', roomCode); // On demande la liste
-    
-    socket.on('load_markers', (markers) => {
-        markersList.innerHTML = ''; // On vide
-        markers.forEach(m => displayMarker(m));
-    });
-    
 }
 
 document.addEventListener('DOMContentLoaded', init_room);

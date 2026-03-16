@@ -29,8 +29,12 @@ node control/server.js
 PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "CREATE TABLE marker (marker_id SERIAL PRIMARY KEY, room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE, user_id INTEGER REFERENCES \"user\"(user_id) ON DELETE SET NULL, timestamp_seconds REAL NOT NULL, comment TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
 
 
-entrer dans la bdd:
+#entrer dans la bdd:
 psql -h 127.0.0.1 -U uapv2401716 etd
+
+#si erreur yarn (qui empeche l'installation de postgres) :
+sudo rm /etc/apt/sources.list.d/yarn.list
+sudo apt-get update
 
 arborescence du site : 
 
