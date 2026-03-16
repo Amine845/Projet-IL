@@ -4,12 +4,23 @@ DROP TABLE IF EXISTS video, playlist, room, "user" CASCADE;
 -- 2. CRÉATION DES TABLES
 
 CREATE TABLE "user" (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(255) UNIQUE, -- J'ai ajouté UNIQUE pour éviter les doublons
-    password TEXT NOT NULL,
-    role VARCHAR(20) DEFAULT 'membre',
-    current_room_id INTEGER -- Sera lié plus tard pour éviter les erreurs cycliques
+    -- Clé Primaire : ID de l'utilisateur (auto-incrémenté)
+                        user_id SERIAL PRIMARY KEY,
+
+    -- Nom d'utilisateur (requis, unique pour la connexion)
+                        username VARCHAR(50) NOT NULL UNIQUE,
+
+    -- Email de l'utilisateur (requis, unique pour la connexion)
+                        email VARCHAR(255) UNIQUE NOT NULL,
+
+    -- Mot de passe haché (utiliser TEXT pour stocker le hachage long, ex: bcrypt)
+                        password TEXT NOT NULL,
+
+    -- Rôle de l'utilisateur (ex: 'admin', 'membre', 'hôte')
+                        role VARCHAR(20) DEFAULT 'membre',
+
+    -- Pour savoir dans quelle salle est l'utilisateur
+                        current_room_id INTEGER
 );
 
 CREATE TABLE room (
@@ -32,18 +43,35 @@ CREATE TABLE video (
     playlist_id INTEGER REFERENCES playlist(playlist_id) ON DELETE CASCADE
 );
 
--- 3. INSERTION DES DONNÉES DE TEST (Optionnel mais pratique)
-INSERT INTO "user" (username, email, password, role) VALUES ('AdminTest', 'admin@test.com', '12345', 'admin');
--- Note : Comme room a besoin d'un host_id qui vient d'être créé (ID 1), on peut créer la room maintenant.
-INSERT INTO room (room_id, name, host_id) VALUES (123456, 'Salon Test', 1);
+    -- Définition de la contrainte de clé étrangère
+                       CONSTRAINT fk_playlist
+                           FOREIGN KEY (playlist_id)
+                               REFERENCES playlist(playlist_id)
+                               ON DELETE CASCADE -- Si la playlist est supprimée, les vidéos sont supprimées
+);
 
-CREATE TABLE IF NOT EXISTS markers (
-    id SERIAL PRIMARY KEY,
-    room_code VARCHAR(50) NOT NULL,
-    video_id VARCHAR(50) NOT NULL,
-    user_id INTEGER REFERENCES "user"(id), -- Lien avec ta table users existante
-    timestamp_seconds FLOAT NOT NULL,      -- Le temps précis (ex: 124.5)
-    content TEXT,                          -- Le commentaire
-    category VARCHAR(20) DEFAULT 'Note',   -- Filtre: 'Note', 'Erreur', 'Important'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE marker (
+    marker_id SERIAL PRIMARY KEY,
+    
+    -- Lien avec la salle
+    room_id INTEGER NOT NULL,
+    
+    -- Lien avec l'utilisateur (qui a écrit la note)
+    -- ON DELETE SET NULL : si l'user est supprimé, le commentaire reste (anonyme)
+    user_id INTEGER REFERENCES "user"(user_id) ON DELETE SET NULL,
+    
+    -- Le temps exact dans la vidéo
+    timestamp_seconds REAL NOT NULL,
+    
+    -- Le contenu du commentaire
+    comment TEXT NOT NULL,
+
+    category VARCHAR(20) DEFAULT "info",
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_room_marker
+        FOREIGN KEY (room_id)
+        REFERENCES room(room_id)
+        ON DELETE CASCADE
 );

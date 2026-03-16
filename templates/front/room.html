@@ -159,43 +159,60 @@
         
     </div>
 
-
     <div class="row mt-3">
         <!-- Colonne Gauche : Lecteur Vidéo -->
         <div class="col-md-8">
-
-            <!-- Infos Contrôleur -->
             <div class="mb-2 d-flex justify-content-between">
                 <span>En contrôle : <strong id="controller-name" class="text-info">Personne</strong></span>
                 <button id="btn-control" class="btn btn-sm btn-warning">Prendre le contrôle</button>
             </div>
-
-            <!-- Lecteur YouTube (API) -->
             <div id="player-container" class="floating-frame">
                 <div id="player"></div>
             </div>
         </div>
 
+        <!-- ZONE D'ANALYSE (MARQUEURS) -->
+        <div class="card mt-3 floating-frame text-white bg-dark border-secondary">
+            <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Analyse Collaborative</h5>
+                <span id="current-time-display" class="badge bg-primary">00:00</span>
+            </div>
+            <div class="card-body">
+                <!-- Formulaire d'ajout -->
+                <div class="input-group mb-3">
+                    <button class="btn btn-outline-warning" type="button" id="btn-capture-time">Capturer</button>
+                        <select id="marker-category" class="form-select bg-dark text-white border-secondary" style="max-width: 130px;">
+                            <option value="info" selected>Note</option>
+                            <option value="success">Positif</option>
+                            <option value="danger">Erreur</option>
+                            <option value="warning">Alerte</option>
+                        </select>
+                    <input type="text" id="marker-input" class="form-control bg-secondary text-white border-secondary" placeholder="Ajouter une observation à ce moment...">
+                    <button class="btn btn-warning" type="button" id="btn-add-marker">Ajouter</button>
+                </div>
+
+                <!-- Liste des marqueurs -->
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <ul id="markers-list" class="list-group list-group-flush">
+                        <!-- Les marqueurs s'afficheront ici -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <!-- Colonne Droite : Chat & Users -->
-
-
-
-        <!-- Onglets  Clavardage / Liste utilisateurs -->
         <div class="col-md-4" >
-            <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;"  !--Un div de mise en forme>
+            <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;">
                 <div class="nav nav-tabs d-flex input-group card-header" style="border-radius: 0px 5px;" id="nav-tab" role="tablist">
                     <button style="width: 50%;" class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#show-chat" type="button">Clavardage</button>
                     <button style="width: 50%;" class="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#show-users" type="button">Utilisateurs en ligne</button>
                 </div>
 
-
-                <!-- Liste Users -->
                 <div class="tab-content" style="height: 100%;">
                     <div id="show-users" class="tab-pane text-white chat-container"style="height: 100%;">
                         <ul id="users-list" class="list-unstyled mb-0" style="overflow-y: auto;"></ul>
                     </div>
 
-                    <!-- Chat -->
                     <div id="show-chat" class="show active tab-pane " style="width: 100%;height: 100%">
                         <div class="text-white chat-container card" style="display: flex;width: 100%;height: 100%">
                             <div id="chat-box" class="chat-messages" style="flex: 1 0 0;"></div>
@@ -205,7 +222,6 @@
                                 <button id="btn-send" class="btn btn-primary">Envoyer</button>
                             </div>
                         </div>
-                            
                     </div>
                 </div>
             </div>
@@ -213,12 +229,11 @@
     </div>
 </br>
 
-
     <!-- PLAYLIST -->
     <div class="card text-white border-secondary mb-3">
         <div class="card-header border-secondary text-white smoke liquid" style="display: inline-flex;">
             <h6 class="card-title"><i class="fas fa-list"></i> Playlist en attente</h6>
-            <button id="add-current-video-btn" class="btn btn-success card-header liquid"   style="position: fixed; right: 20px;" title="Ajouter la vidéo en cours à la playlist">
+            <button id="add-current-video-btn" class="btn btn-success card-header liquid" style="position: fixed; right: 20px;" title="Ajouter la vidéo en cours à la playlist">
             <i class="fa fa-refresh"></i> Ajouter à la Playlist
             </button>
         </div>
@@ -229,14 +244,15 @@
         </ul>
     </div>
 
-
-    <!--    AFFICHAGE DES RESULTATS DE RECHERCHE   -->
+    <!-- RESULTATS DE RECHERCHE -->
     <div class="mb-4">
         <div id="results-container" class="row mt-3 g-3">
     </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<!-- APPEL DU FICHIER JS EXTERNE -->
+<script src="/templates/src/js/room.js"></script>
 <script>
     
     const socket = io();
