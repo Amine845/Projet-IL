@@ -81,18 +81,17 @@
     <div class=" text-center center-position col-md-7">
         <div class="container floating-frame p-4 pt-5 pb-5" style="max-width: 500px;">
             <h1 class="text-primary mb-1 ">Se connecter à</h1>
-            <h1 class="text-primary mb-4 ">StreamSquad</h1>
+            <h1 class="text-primary mb-4">StreamSquad</h1>
 
-            <!-- Ajout d'un ID au formulaire et suppression de action/method -->
             <form id="login-form">
                 <div class="row justify-content-center">
                     <div class="">
-                        <input type="email" id="login-email" class="form-control mb-3" placeholder="Votre adresse mail" required>
+                        <input type="text" id="login-identifier" class="form-control mb-3" placeholder="Votre email ou pseudonyme" required>
                         <input type="password" id="login-password" class="form-control mb-3" placeholder="Votre mot de passe" required>
 
                         <button type="submit" class="btn btn-primary w-100">Se connecter</button>
                         <a id="create-account" class="js-access-button" href="/signup">Vous n'avez pas encore de compte ?</a>
-                        <!-- Zone erreur -->
+                        
                         <div id="error-msg" class="text-danger mt-3" style="min-height: 24px;"></div>
                     </div>
                 </div>

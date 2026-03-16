@@ -305,14 +305,30 @@ async function cleanDatabaseOnStart() {
     }
 }
 
+
 // --- API LOGIN / SIGNUP ---
+// création de la route pour le login
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ success: false, message: "Champs manquants" });
+    // On récupère les deux possibilités (email ou username)
+    const { email, username, password } = req.body;
+
+    if ((!email && !username) || !password) {
+        return res.status(400).json({ success: false, message: "Champs manquants" });
+    }
 
     try {
-        const result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
-        if (result.rowCount === 0) return res.json({ success: false, message: "Utilisateur introuvable" });
+        let result;
+        
+        // On cherche l'utilisateur via l'email s'il est fourni, sinon via l'username
+        if (email) {
+            result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
+        } else {
+            result = await pool.query('SELECT * FROM "user" WHERE username = $1', [username]);
+        }
+
+        if (result.rowCount === 0) {
+            return res.json({ success: false, message: "Utilisateur introuvable" });
+        }
 
         const user = result.rows[0];
         const ok = await bcrypt.compare(password, user.password);
@@ -326,20 +342,41 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// création de la route pour l'inscription
 app.post('/api/signup', async (req, res) => {
+    // On récupère TOUS les champs
     const { username, email, password } = req.body;
-    if (!username || !email || !password) return res.status(400).json({ success: false, message: "Champs obligatoires." });
+
+    if (!username || !email || !password) {
+        return res.status(400).json({ success: false, message: "Tous les champs sont obligatoires." });
+    }
 
     try {
-        const check = await pool.query('SELECT user_id FROM "user" WHERE email = $1', [email]);
-        if (check.rowCount > 0) return res.json({ success: false, message: "Email déjà utilisé." });
+        // Vérifier si l'email est déjà utilisé
+        const checkEmail = await pool.query('SELECT user_id FROM "user" WHERE email = $1', [email]);
+        if (checkEmail.rowCount > 0) {
+            return res.json({ success: false, message: "Email déjà utilisé." });
+        }
 
+        // Vérifier si l'username est déjà utilisé
+        const checkUsername = await pool.query('SELECT * FROM "user" WHERE username = $1', [username]);
+        if (checkUsername.rowCount > 0) {
+            return res.json({ success: false, message: "Nom d'utilisateur déjà pris." });
+        }
+
+        // Hacher le mot de passe (main)
         const hash = await bcrypt.hash(password, 10);
-        await pool.query('INSERT INTO "user" (username, email, password) VALUES ($1, $2, $3)', [username, email, hash]);
 
-        res.json({ success: true, message: "Compte créé" });
+        // Insérer l'utilisateur avec tous ses champs
+        await pool.query(
+            'INSERT INTO "user" (username, email, password) VALUES ($1, $2, $3)', 
+            [username, email, hash]
+        );
+
+        res.json({ success: true, message: "Compte créé avec succès" });
+
     } catch (err) {
-        console.log(err);
+        console.error("ERREUR SIGNUP :", err);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 });
