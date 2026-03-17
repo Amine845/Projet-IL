@@ -73,7 +73,7 @@ function init_room() {
         window.player = new YT.Player('player', {
             height: '100%',
             width: '100%',
-            videoId: '3y5H4XINDEU', 
+            videoId: '', 
             playerVars: { 'autoplay': 0, 'controls': 1 },
             events: { 'onStateChange': onPlayerStateChange }
         });
