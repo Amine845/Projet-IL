@@ -1,169 +1,382 @@
-function init_room(){
+function init_room() {
 
     const socket = io();
 
-    // 1. Récupérer les infos depuis l'URL
     const params = new URLSearchParams(window.location.search);
     const roomCode = params.get('room');
     const username = params.get('user');
 
     if (!roomCode || !username) {
         window.location.href = '/';
+        return;
     }
 
-    document.getElementById('display-code').textContent = roomCode;
+    const displayCode = document.getElementById('display-code');
+    if(displayCode) displayCode.textContent = roomCode;
 
-    // 2. Se connecter au salon
     socket.emit('join_room', { roomCode, username });
+    socket.emit('request_markers', roomCode);
 
-    // --- VARIABLES DOM ---
+    // --- VARIABLES DOM CHAT ---
     const chatBox = document.getElementById('chat-box');
-    const usersList = document.getElementById('users-list'); // Assure-toi que cet ID est dans le HTML
+    const usersList = document.getElementById('users-list');
     const msgInput = document.getElementById('msg-input');
     const typingIndicator = document.getElementById('typing-indicator');
     const btnSend = document.getElementById('btn-send');
 
     // --- GESTION LISTE UTILISATEURS ---
     socket.on('update_users', (users) => {
-        if(usersList) {
-            usersList.innerHTML = users.map(u => 
-                `<li class="list-group-item bg-secondary text-white py-1">🟢 ${u.username}</li>`
+        if (usersList) {
+            usersList.innerHTML = users.map(u =>
+                `<li class="text-white"><span style="color:#0f0;">●</span> ${u.username}</li>`
             ).join('');
         }
     });
 
-    // --- GESTION RECEPTION MESSAGE ---
     socket.on('receive_message', (data) => {
+        if (!chatBox) return;
         const div = document.createElement('div');
-        
         if (data.isSystem) {
-            // Style différent pour les messages système (Connexion/Déconnexion)
             div.className = 'system-msg';
             div.textContent = data.text;
         } else {
-            // Message standard
             div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
         }
-        
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // --- ENVOI MESSAGE ---
     function sendMessage() {
-        if (msgInput.value.trim()) {
-            // ...On remplace par 'text' pour que ça corresponde à la lecture
+        if (msgInput && msgInput.value.trim()) {
             socket.emit('send_message', { roomCode, username, text: msgInput.value });
             msgInput.value = '';
         }
     }
 
-    btnSend.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-    // --- GESTION "EN TRAIN D'ÉCRIRE..." (CDC Page 8) ---
-    let typingTimer;
-
-    // Quand je tape, je préviens le serveur
-    msgInput.addEventListener('input', () => {
-        socket.emit('typing', { roomCode, username });
-    });
-
-    // Quand le serveur me dit que quelqu'un tape
-    socket.on('user_typing', (userTyping) => {
-        typingIndicator.textContent = `${userTyping} est en train d'écrire...`;
-        
-        // On efface le message après 3 secondes sans nouvelle frappe
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => {
-            typingIndicator.textContent = '';
-        }, 3000);
-    });
-
-
-    // --- JAVASCRIPT BARRE DE RECHERCHE (Code existant conservé) ---
-    const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU"; 
-    const API_URL = "https://www.googleapis.com/youtube/v3/search";
-
-    const form = document.getElementById('search-form');
-    const input = document.getElementById('search-input');
-    const resultsContainer = document.getElementById('results-container');
-    const statusMessage = document.getElementById('status-message');
-
-    function hideStatus() {
-        if (statusMessage) statusMessage.classList.add('d-none');
+    if (btnSend) btnSend.addEventListener('click', sendMessage);
+    if (msgInput) {
+        msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        msgInput.addEventListener('input', () => socket.emit('typing', { roomCode, username }));
     }
 
-    function showStatus(msg) {
-        if (statusMessage) {
-            statusMessage.textContent = msg;
-            statusMessage.classList.remove('d-none');
-            statusMessage.classList.add('alert', 'alert-info');
+    let typingTimer;
+    socket.on('user_typing', (userTyping) => {
+        if (typingIndicator) {
+            typingIndicator.textContent = `${userTyping} est en train d'écrire...`;
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => { typingIndicator.textContent = ''; }, 3000);
+        }
+    });
+
+    // --- YOUTUBE API ---
+    window.onYouTubeIframeAPIReady = function() {
+        window.player = new YT.Player('player', {
+            height: '100%',
+            width: '100%',
+            videoId: '', 
+            playerVars: { 'autoplay': 0, 'controls': 1 },
+            events: { 'onStateChange': onPlayerStateChange }
+        });
+    };
+
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    // --- SYNC VIDEO ---
+    let currentController = null;
+    let isSyncing = false;
+
+    const btnControl = document.getElementById('btn-control');
+    if (btnControl) {
+        btnControl.addEventListener('click', () => socket.emit('claim_control', { roomCode, username }));
+    }
+
+    socket.on('update_controller', (name) => {
+        currentController = name;
+        const ctrlName = document.getElementById('controller-name');
+        if (ctrlName) ctrlName.textContent = name;
+    });
+
+    socket.on('load_video', (videoId) => {
+        if (window.player && window.player.loadVideoById) window.player.loadVideoById(videoId);
+    });
+
+    function onPlayerStateChange(event) {
+        if (currentController === username && !isSyncing) {
+            let state = event.data;
+            let time = window.player.getCurrentTime();
+            if (state === YT.PlayerState.PLAYING) socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
+            else if (state === YT.PlayerState.PAUSED) socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
         }
     }
+
+    socket.on('sync_video', (data) => {
+        if (!window.player || !window.player.seekTo) return;
+        isSyncing = true;
+        if (Math.abs(window.player.getCurrentTime() - data.currentTime) > 1) {
+            window.player.seekTo(data.currentTime);
+        }
+        if (data.type === 'play') window.player.playVideo();
+        else if (data.type === 'pause') window.player.pauseVideo();
+        setTimeout(() => { isSyncing = false; }, 500);
+    });
+
+    // --- PLAYLIST ---
+    const playlistList = document.getElementById('playlist-list');
+    let playlist =[];
+
+    function renderPlaylist() {
+        if (!playlistList) return;
+        playlistList.innerHTML = "";
+        if (playlist.length === 0) {
+            playlistList.innerHTML = `<li class="list-group-item bg-dark text-muted text-center small border-secondary">Aucune vidéo dans la playlist.</li>`;
+            return;
+        }
+
+        playlist.forEach((video, index) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item bg-dark border-secondary text-white d-flex justify-content-between align-items-center";
+            li.innerHTML = `<span style="cursor:pointer;" class="video-play text-primary" data-index="${index}">${video.title}</span>
+            <button class="btn btn-sm btn-outline-danger remove-video" data-index="${index}">X</button>`;
+            playlistList.appendChild(li);
+        });
+
+        document.querySelectorAll(".video-play").forEach(el => {
+            el.addEventListener("click", () => {
+                const v = playlist[el.dataset.index];
+                socket.emit("change_video", { roomCode, videoId: v.id });
+            });
+        });
+        document.querySelectorAll(".remove-video").forEach(btn => {
+            btn.addEventListener("click", () => {
+                playlist.splice(btn.dataset.index, 1);
+                renderPlaylist();
+            });
+        });
+    }
+
+    function addVideoToPlaylist(videoId, title) {
+        playlist.push({ id: videoId, title: title });
+        renderPlaylist();
+    }
+
+    const btnAddCurrent = document.getElementById("add-current-video-btn");
+    if (btnAddCurrent) {
+        btnAddCurrent.addEventListener("click", () => {
+            if (!window.player || !window.player.getVideoData) return;
+            const data = window.player.getVideoData();
+            addVideoToPlaylist(data.video_id, data.title || "Vidéo sans titre");
+        });
+    }
+
+    // --- RECHERCHE ET FILTRES ---
+    const apiKey = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU";
+    const API_URL = "https://www.googleapis.com/youtube/v3/search";
+    const formSearch = document.getElementById('search-form');
+    const inputSearch = document.getElementById('search-input');
+    const resultsContainer = document.getElementById('results-container');
+
+    let currentResults =[];
+    let activeFilters = { sort: "relevance", shorts: "all", text: "", duration: "all", uploadDate: "all" };
 
     function videoRecherchee(video) {
         const videoId = video.id.videoId;
         const title = video.snippet.title;
         const thumbnailUrl = video.snippet.thumbnails.high.url;
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
         return `
             <div class="col-md-4 mb-3">
-                <div class="card h-100 bg-dark border-secondary text-white">
-                    <a href="${videoUrl}" target="_blank" class="text-decoration-none text-white">
-                        <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
-                        <div class="card-body p-2">
-                            <p class="card-text small text-truncate">${title}</p>
-                        </div>
-                    </a>
+                <div class="card h-100 bg-dark border-secondary text-white video-result" 
+                    data-video-id="${videoId}" style="cursor:pointer;">
+                    <img src="${thumbnailUrl}" class="card-img-top" alt="${title}" style="height: 140px; object-fit: cover;">
+                    <div class="card-body p-2">
+                        <p class="card-text small text-truncate">${title}</p>
+                    </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     function renderResults(items) {
-        if (!items || items.length === 0) {
-            showStatus("Aucun résultat trouvé.");
-            return;
-        }
-        const htmlContent = items.map(videoRecherchee).join('');
-        resultsContainer.innerHTML = htmlContent;
-        hideStatus();
+        if (!items || !resultsContainer) return;
+        resultsContainer.innerHTML = items.map(videoRecherchee).join('');
+        resultsContainer.scrollIntoView({ behavior: "smooth" });
+
+        document.querySelectorAll('.video-result').forEach(card => {
+            card.addEventListener('click', () => {
+                socket.emit('change_video', { roomCode, videoId: card.dataset.videoId });
+                document.getElementById('player-container').scrollIntoView({ behavior: "smooth" });
+            });
+        });
     }
+
+    async function fetchVideoDurations(videoIds) {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds.join(",")}&key=${apiKey}`);
+        const data = await res.json();
+        const map = {};
+        data.items.forEach(v => { map[v.id] = v.contentDetails.duration; });
+        return map;
+    }
+
+    function parseDuration(duration) {
+        if (!duration) return 0;
+        const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const hours = parseInt(match[1]) || 0;
+        const minutes = parseInt(match[2]) || 0;
+        const seconds = parseInt(match[3]) || 0;
+        return hours*3600 + minutes*60 + seconds;
+    }
+
+    function applyFilters() {
+        let filtered = [...currentResults];
+
+        if (activeFilters.text) filtered = filtered.filter(v => v.snippet.title.toLowerCase().includes(activeFilters.text.toLowerCase()));
+        if (activeFilters.sort === "alpha_asc") filtered.sort((a,b) => a.snippet.title.localeCompare(b.snippet.title));
+        if (activeFilters.sort === "date_new") filtered.sort((a,b) => new Date(b.snippet.publishedAt) - new Date(a.snippet.publishedAt));
+
+        if (activeFilters.duration !== "all") {
+            filtered = filtered.filter(v => {
+                const d = v.durationSec;
+                if (activeFilters.duration === "short") return d < 180;
+                if (activeFilters.duration === "medium") return d >= 180 && d <= 1200;
+                if (activeFilters.duration === "long") return d > 1200;
+                return true;
+            });
+        }
+
+        if (activeFilters.uploadDate !== "all") {
+            const now = new Date();
+            filtered = filtered.filter(v => {
+                const diff = (now - new Date(v.snippet.publishedAt)) / (1000*60*60*24);
+                if (activeFilters.uploadDate === "today") return diff < 1;
+                if (activeFilters.uploadDate === "week") return diff < 7;
+                if (activeFilters.uploadDate === "month") return diff < 30;
+                if (activeFilters.uploadDate === "year") return diff < 365;
+                return true;
+            });
+        }
+        renderResults(filtered);
+    }
+
+    function resetFilters() {
+        activeFilters = { sort: "relevance", shorts: "all", text: "", duration: "all", uploadDate: "all" };
+        document.querySelectorAll(".filter-option").forEach(el => el.classList.remove("text-primary", "fw-bold"));
+        document.getElementById("filter-text").value = "";
+        applyFilters();
+    }
+
+    const btnToggleFilters = document.getElementById("btn-toggle-filters");
+    if(btnToggleFilters) btnToggleFilters.addEventListener("click", () => document.getElementById("filters-panel").classList.toggle("d-none"));
+    
+    const btnResetFilters = document.getElementById("reset-filters");
+    if(btnResetFilters) btnResetFilters.addEventListener("click", resetFilters);
+
+    document.querySelectorAll(".filter-option").forEach(el => {
+        el.addEventListener("click", () => {
+            const type = el.dataset.type;
+            const val = el.dataset.value;
+            document.querySelectorAll(`.filter-option[data-type="${type}"]`).forEach(e => e.classList.remove("text-primary", "fw-bold"));
+            el.classList.add("text-primary", "fw-bold");
+            activeFilters[type] = val;
+            applyFilters();
+        });
+    });
+
+    const filterText = document.getElementById("filter-text");
+    if(filterText) filterText.addEventListener("input", (e) => { activeFilters.text = e.target.value; applyFilters(); });
 
     async function rechercheYoutubeVideos(recherche) {
-        if (!recherche) return;
-        showStatus("Recherche en cours...");
-        if (resultsContainer) resultsContainer.innerHTML = '';
-        
-        const params = new URLSearchParams({
-            part: 'snippet',
-            q: recherche, 
-            key: apiKey,
-            type: 'video',
-            maxResults: 12
-        });
-
+        resetFilters();
+        const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
         try {
-            const response = await fetch(`${API_URL}?${params.toString()}`);
-            if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
-            const data = await response.json();
-            renderResults(data.items);
-        } catch (error) {
-            console.error("Erreur:", error);
-            showStatus("Erreur lors de la recherche.");
-        }
+            const res = await fetch(`${API_URL}?${params.toString()}`);
+            const data = await res.json();
+            const ids = data.items.map(v => v.id.videoId);
+            const durations = await fetchVideoDurations(ids);
+            data.items.forEach(v => { v.durationSec = parseDuration(durations[v.id.videoId]); });
+            currentResults = data.items;
+            applyFilters();
+        } catch(e) { console.error(e); }
     }
 
-    if (form) {
-        form.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const searchTerm = input.value.trim();
-            rechercheYoutubeVideos(searchTerm);
+    if (formSearch) {
+        formSearch.addEventListener('submit', (e) => {
+            e.preventDefault();
+            rechercheYoutubeVideos(inputSearch.value.trim());
         });
     }
+
+    // --- GESTION DES MARQUEURS ---
+    const markerInput = document.getElementById('marker-input');
+    const markerCategory = document.getElementById('marker-category');
+    const btnAddMarker = document.getElementById('btn-add-marker');
+    const btnCaptureTime = document.getElementById('btn-capture-time');
+    const markersList = document.getElementById('markers-list');
+    const currentTimeDisplay = document.getElementById('current-time-display');
+
+    function formatTime(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+    }
+
+    let capturedTimestamp = null;
+
+    setInterval(() => {
+        if (window.player && window.player.getCurrentTime) {
+            if(currentTimeDisplay) currentTimeDisplay.textContent = formatTime(window.player.getCurrentTime());
+        }
+    }, 1000);
+
+    if (btnCaptureTime) {
+        btnCaptureTime.addEventListener('click', () => {
+            if (window.player && window.player.getCurrentTime) {
+                capturedTimestamp = window.player.getCurrentTime();
+                btnCaptureTime.classList.replace('btn-outline-warning', 'btn-warning');
+                markerInput.placeholder = `Note pour ${formatTime(capturedTimestamp)}...`;
+                markerInput.focus();
+            }
+        });
+    }
+
+    function addMarker() {
+        if (!markerInput.value.trim() || !window.player) return;
+        const timeToSend = (capturedTimestamp !== null) ? capturedTimestamp : window.player.getCurrentTime();
+
+        socket.emit('add_marker', {
+            roomCode: roomCode,
+            username: username,
+            timestamp: timeToSend,
+            comment: markerInput.value.trim(),
+            category: markerCategory.value
+        });
+
+        markerInput.value = '';
+        markerInput.placeholder = "Ajouter une observation à ce moment...";
+        capturedTimestamp = null;
+        if(btnCaptureTime) btnCaptureTime.classList.replace('btn-warning', 'btn-outline-warning');
+    }
+
+    if (btnAddMarker) btnAddMarker.addEventListener('click', addMarker);
+    if (markerInput) markerInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') addMarker(); });
+
+    socket.on('update_markers', (markers) => {
+        if (!markersList) return;
+        markersList.innerHTML = markers.map(m => {
+            const colorMap = { 'info': 'bg-primary', 'success': 'bg-success', 'danger': 'bg-danger', 'warning': 'bg-warning' };
+            const badgeColor = colorMap[m.category] || 'bg-primary';
+            return `
+                <li class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+                    <span>
+                        <span class="badge ${badgeColor} me-2" style="cursor:pointer" onclick="if(window.player) { window.player.seekTo(${m.timestamp_seconds}, true); window.player.playVideo(); }">
+                            ${formatTime(m.timestamp_seconds)}
+                        </span>
+                        <strong>${m.username}:</strong> ${m.comment}
+                    </span>
+                </li>`;
+        }).join('');
+    });
+
 }
 
-// Lancement de la fonction une fois le DOM chargé
 document.addEventListener('DOMContentLoaded', init_room);
