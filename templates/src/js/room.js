@@ -40,7 +40,7 @@ function init_room() {
             div.className = 'system-msg';
             div.textContent = data.text;
         } else {
-            div.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
+            div.innerHTML = `<strong> [${data.currentVideoTime}]  ${data.username}:</strong> ${data.text}`;
         }
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -48,7 +48,10 @@ function init_room() {
 
     function sendMessage() {
         if (msgInput && msgInput.value.trim()) {
-            socket.emit('send_message', { roomCode, username, text: msgInput.value });
+
+            var currentVideoTime = window.player.getCurrentTime();
+
+            socket.emit('send_message', { roomCode, username, text: msgInput.value, currentVideoTime });
             msgInput.value = '';
         }
     }
