@@ -178,7 +178,8 @@ function init_room() {
     const inputSearch = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
 
-    let currentResults =[];
+    let allResults = [];
+    let displayedResults = [];
     let activeFilters = { sort: "relevance", shorts: "all", text: "", duration: "all", uploadDate: "all" };
 
     function videoRecherchee(video) {
@@ -228,7 +229,7 @@ function init_room() {
     }
 
     function applyFilters() {
-        let filtered = [...currentResults];
+        let filtered = [...allResults];
 
         if (activeFilters.text) filtered = filtered.filter(v => v.snippet.title.toLowerCase().includes(activeFilters.text.toLowerCase()));
         if (activeFilters.sort === "alpha_asc") filtered.sort((a,b) => a.snippet.title.localeCompare(b.snippet.title));
@@ -255,7 +256,8 @@ function init_room() {
                 return true;
             });
         }
-        renderResults(filtered);
+        displayedResults = filtered.slice(0, 9);
+        renderResults(displayedResults);
     }
 
     function resetFilters() {
@@ -287,14 +289,14 @@ function init_room() {
 
     async function rechercheYoutubeVideos(recherche) {
         resetFilters();
-        const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 12 });
+        const params = new URLSearchParams({ part: 'snippet', q: recherche, key: apiKey, type: 'video', maxResults: 50 });
         try {
             const res = await fetch(`${API_URL}?${params.toString()}`);
             const data = await res.json();
             const ids = data.items.map(v => v.id.videoId);
             const durations = await fetchVideoDurations(ids);
             data.items.forEach(v => { v.durationSec = parseDuration(durations[v.id.videoId]); });
-            currentResults = data.items;
+            allResults = data.items;
             applyFilters();
         } catch(e) { console.error(e); }
     }
