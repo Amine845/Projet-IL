@@ -68,6 +68,17 @@ function init_room() {
         }
     });
 
+    // --- DÉPART DE LA ROOM ---
+    const btnLeave = document.getElementById('btn-leave-room');
+    if (btnLeave) {
+        btnLeave.addEventListener('click', () => {
+            // On prévient le serveur qu'on quitte la room
+            socket.emit('explicit_leave', { roomCode, username });
+            // On redirige vers l'accueil
+            window.location.href = '/';
+        });
+    }
+
     // --- YOUTUBE API ---
     window.onYouTubeIframeAPIReady = function() {
         window.player = new YT.Player('player', {
@@ -313,6 +324,8 @@ function init_room() {
     const btnCaptureTime = document.getElementById('btn-capture-time');
     const markersList = document.getElementById('markers-list');
     const currentTimeDisplay = document.getElementById('current-time-display');
+    let isMarkerCooldown = false;
+    const COOLDOWN_TIME = 3000; // 3 secondes de délai entre les marqueurs
 
     function formatTime(seconds) {
         const min = Math.floor(seconds / 60);
@@ -340,9 +353,13 @@ function init_room() {
     }
 
     function addMarker() {
+        // 1. On bloque si le cooldown est actif
+        if (isMarkerCooldown) return;
+
         if (!markerInput.value.trim() || !window.player) return;
         const timeToSend = (capturedTimestamp !== null) ? capturedTimestamp : window.player.getCurrentTime();
 
+        // Envoi au serveur
         socket.emit('add_marker', {
             roomCode: roomCode,
             username: username,
@@ -355,6 +372,20 @@ function init_room() {
         markerInput.placeholder = "Ajouter une observation à ce moment...";
         capturedTimestamp = null;
         if(btnCaptureTime) btnCaptureTime.classList.replace('btn-warning', 'btn-outline-warning');
+
+        // 2. cooldown affichage
+        isMarkerCooldown = true;
+        if (btnAddMarker) {
+            btnAddMarker.disabled = true;
+            const originalText = btnAddMarker.textContent;
+            btnAddMarker.textContent = "Patientez...";
+
+            setTimeout(() => {
+                isMarkerCooldown = false;
+                btnAddMarker.disabled = false;
+                btnAddMarker.textContent = originalText;
+            }, COOLDOWN_TIME);
+        }
     }
 
     if (btnAddMarker) btnAddMarker.addEventListener('click', addMarker);
@@ -371,7 +402,7 @@ function init_room() {
                         <span class="badge ${badgeColor} me-2" style="cursor:pointer" onclick="if(window.player) { window.player.seekTo(${m.timestamp_seconds}, true); window.player.playVideo(); }">
                             ${formatTime(m.timestamp_seconds)}
                         </span>
-                        <strong>${m.username}:</strong> ${m.comment}
+                        <strong>${m.username ? m.username : '<i>Ancien invité</i>'}:</strong> ${m.comment}
                     </span>
                 </li>`;
         }).join('');
