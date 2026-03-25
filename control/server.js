@@ -35,7 +35,8 @@ app.get('/login', (req, res) => res.sendFile(path.join(cheminVues, 'login.html')
 app.get('/signup', (req, res) => res.sendFile(path.join(cheminVues, 'signup.html')));
 app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'testDB.html')));
 
-let rooms = {};
+let rooms = {}; 
+let roomCleanupTimers = {}; // stocker les timers des salles vides
 
 function generateRoomCode() {
     let code;
@@ -97,6 +98,23 @@ io.on('connection', (socket) => {
         socket.emit('room_created', code);
     });
 
+    socket.on('explicit_leave', async (data) => {
+        const { roomCode, username } = data;
+        
+        try {
+            // On vérifie le rôle
+            const userCheck = await pool.query('SELECT role FROM "user" WHERE username = $1', [username]);
+            
+            if (userCheck.rowCount > 0 && userCheck.rows[0].role === 'guest') {
+                // C'est un invité qui a cliqué sur Quitter -> ON LE SUPPRIME DÉFINITIVEMENT
+                await pool.query('DELETE FROM "user" WHERE username = $1', [username]);
+                console.log(`[BDD] Invité ${username} supprimé suite à un départ volontaire.`);
+            }
+        } catch (err) {
+            console.error("Erreur SQL lors du départ volontaire:", err);
+        }
+    });
+
     socket.on('join_room', async (data) => {
         const { roomCode, username } = data;
         const roomIdInt = parseInt(roomCode);
@@ -108,7 +126,14 @@ io.on('connection', (socket) => {
         if (!alreadyInRoom) {
             rooms[roomCode].users.push({ id: socket.id, username: username });
         }
-        socket.join(roomCode);
+socket.join(roomCode);
+
+        // --- ANNULATION DE LA SUPPRESSION (Si F5) ---
+        if (roomCleanupTimers[roomCode]) {
+            clearTimeout(roomCleanupTimers[roomCode]);
+            delete roomCleanupTimers[roomCode];
+            console.log(`[SERVEUR] Suppression de la salle ${roomCode} annulée (quelqu'un est arrivé).`);
+        }
 
         try {
             let userId;
@@ -164,23 +189,25 @@ io.on('connection', (socket) => {
 
     socket.on('video_action', (data) => socket.to(data.roomCode).emit('sync_video', data));
 
+// --- DÉCONNEXION ---
     socket.on('disconnect', async () => {
         for (const code in rooms) {
             const userIndex = rooms[code].users.findIndex(user => user.id === socket.id);
+            
             if (userIndex !== -1) {
                 const username = rooms[code].users[userIndex].username;
-
+                
                 rooms[code].users.splice(userIndex, 1);
-
+                
                 if (rooms[code].controller === username) {
                     rooms[code].controller = null;
                     io.to(code).emit('update_controller', 'Personne');
                 }
-
                 io.to(code).emit('update_users', rooms[code].users);
-
+                
                 try {
-                    const userCheck = await pool.query('SELECT role FROM "user" WHERE username = $1',[username]);
+                    const userCheck = await pool.query('SELECT role FROM "user" WHERE username = $1', [username]);
+                    
                     if (userCheck.rowCount > 0) {
                         const role = userCheck.rows[0].role;
                         if (role === 'guest') {
@@ -190,15 +217,26 @@ io.on('connection', (socket) => {
                         }
                     }
 
-                    // On supprime la salle si elle est vide
                     if (rooms[code].users.length === 0) {
-                        const roomIdInt = parseInt(code);
-                        await pool.query('DELETE FROM room WHERE room_id = $1', [roomIdInt]);
-                        delete rooms[code];
+                        console.log(`[SERVEUR] La salle ${code} est vide. Suppression dans 5 secondes...`);
+                        
+                        roomCleanupTimers[code] = setTimeout(async () => {
+                            try {
+                                const roomIdInt = parseInt(code);
+                                await pool.query('DELETE FROM room WHERE room_id = $1', [roomIdInt]);
+                                delete rooms[code];
+                                delete roomCleanupTimers[code];
+                                console.log(`[BDD] Salon ${code} supprimé définitivement.`);
+                            } catch (err) {
+                                console.error("Erreur suppression salle:", err);
+                            }
+                        }, 5000); // 5000ms = 5s
                     }
+
                 } catch (err) {
-                    console.error("Erreur SQL lors de la déconnexion:", err);
+                    console.error("Erreur SQL déconnexion:", err);
                 }
+                
                 break;
             }
         }
@@ -251,15 +289,36 @@ io.on('connection', (socket) => {
     });
 });
 
-async function cleanDatabaseOnStart() {
+async function cleanDatabase() {
     try {
         console.log("Nettoyage de la base de données...");
-        await pool.query('TRUNCATE TABLE video, playlist, room, "user" RESTART IDENTITY CASCADE');
+        await pool.query('TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
         console.log("Base de données nettoyée !");
     } catch (err) {
         console.error("Erreur nettoyage :", err);
     }
 }
+
+// --- VIDER TOUTE LA BASE DE DONNÉES (depuis testDB.html) ---
+app.post('/api/clean-db', async (req, res) => {
+    try {
+        console.log("[SERVEUR] Demande de nettoyage complet de la BDD...");
+        
+        await pool.query('TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
+        
+        rooms = {};
+        for (let timer in roomCleanupTimers) {
+            clearTimeout(roomCleanupTimers[timer]);
+        }
+        roomCleanupTimers = {};
+
+        console.log("[SERVEUR] Base de données et mémoire nettoyées !");
+        res.json({ success: true, message: "Base de données nettoyée." });
+    } catch (err) {
+        console.error("Erreur nettoyage BDD :", err);
+        res.status(500).json({ success: false, message: "Erreur serveur lors du nettoyage." });
+    }
+});
 
 app.post('/api/login', async (req, res) => {
     const { email, username, password } = req.body;
@@ -310,9 +369,19 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
+
+
+/*
 const PORT = 3000;
-cleanDatabaseOnStart().then(() => {
+cleanDatabase().then(() => {
     server.listen(PORT, () => {
        console.log(`Serveur lancé sur http://localhost:${PORT}`);
     });
+});
+*/
+
+
+const PORT = 3000;
+server.listen(PORT, () => {
+    console.log(`Serveur lancé sur http://localhost:${PORT}`);
 });
