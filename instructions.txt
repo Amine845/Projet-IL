@@ -1,3 +1,6 @@
+/!\ EVITEZ DE LANCER LE SERVEUR DEPUIS LE CODESPACE /!\
+°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
 [[ SI PSQL NE VEUT PAS SE LANCER AVEC L'ERREUR ]]
 
 sudo rm /etc/apt/sources.list.d/yarn.list
