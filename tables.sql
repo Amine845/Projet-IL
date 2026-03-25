@@ -1,5 +1,5 @@
 -- 1. NETTOYAGE COMPLET
-DROP TABLE IF EXISTS marker, video, playlist, room, "user" CASCADE;
+DROP TABLE IF EXISTS marker, chat, video, playlist, room, "user" CASCADE;
 
 -- 2. CRÉATION DES TABLES
 
@@ -13,7 +13,7 @@ CREATE TABLE "user" (
 );
 
 CREATE TABLE room (
-    room_id INTEGER PRIMARY KEY, -- ID manuel (code JS)
+    room_id INTEGER PRIMARY KEY,
     name VARCHAR(100),
     host_id INTEGER REFERENCES "user"(user_id) ON DELETE SET NULL,
     password VARCHAR(50)
