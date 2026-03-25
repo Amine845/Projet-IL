@@ -18,7 +18,8 @@
             <h1 class="text-warning mb-0">État de la Base de Données</h1>
             <div>
                 <a href="/" class="btn btn-outline-light me-2">Retour au site</a>
-                <button id="btn-refresh" class="btn btn-primary">Actualiser Tout</button>
+                <button id="btn-refresh" class="btn btn-primary me-2">Actualiser Tout</button>
+                <button id="btn-clean-db" class="btn btn-danger shadow">Vider la BDD</button>
             </div>
         </div>
         
@@ -186,7 +187,7 @@
                     let markersHtml = '<ul class="list-group list-group-flush rounded">';
                     markers.forEach(m => {
                         const badgeColor = colorMap[m.category] || 'bg-primary';
-                        const author = m.username ? m.username : '<span class="text-muted fst-italic">Utilisateur supprimé</span>';
+                        const author = m.username ? m.username : '<span style="color: #FFE5E5;" class="fst-italic">Utilisateur supprimé</span>';
 
                         markersHtml += `
                             <li class="list-group-item bg-transparent text-white border-secondary d-flex align-items-center px-0">
@@ -215,6 +216,30 @@
 
         refreshAll();
         btn.addEventListener('click', refreshAll);
+
+        // --- gestion bouton vider bdd ---
+        const btnCleanDb = document.getElementById('btn-clean-db');
+        
+        btnCleanDb.addEventListener('click', async () => {
+            const confirmation = confirm("ATTENTION ! Voulez-vous vraiment vider TOUTE la base de données ?\n\nToutes les salles, utilisateurs et marqueurs seront supprimés définitivement.");
+            
+            if (confirmation) {
+                try {
+                    const response = await fetch('/api/clean-db', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert("Succès : " + data.message);
+                        refreshAll();
+                    } else {
+                        alert("Erreur : " + data.message);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Erreur de communication avec le serveur.");
+                }
+            }
+        });
     </script>
 </body>
 </html>
