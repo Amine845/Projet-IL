@@ -29,7 +29,7 @@ CREATE TABLE chat (
     chat_id SERIAL PRIMARY KEY,
     room_id INTEGER REFERENCES room(room_id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES "user"(user_id) ON DELETE SET NULL,
-    timestamp_video_seconds INTEGER DEFAULT 0,
+    currentVideoTime INTEGER DEFAULT 0,
     message_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

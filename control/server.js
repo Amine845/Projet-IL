@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- CONFIGURATION BDD (LOCALE) ---
+// --- CONFIGURATION BDD ---
 const pool = new Pool({
     user: 'uapv2401716',
     host: '127.0.0.1',
@@ -36,7 +36,7 @@ app.get('/signup', (req, res) => res.sendFile(path.join(cheminVues, 'signup.html
 app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'testDB.html')));
 
 let rooms = {}; 
-let roomCleanupTimers = {}; // stocker les timers des salles vides
+let roomCleanupTimers = {};
 
 function generateRoomCode() {
     let code;
@@ -46,50 +46,6 @@ function generateRoomCode() {
     return code;
 }
 
-app.get('/api/rooms-users', async (req, res) => {
-    try {
-        const query = `
-            SELECT r.room_id, u.username, u.email 
-            FROM room r
-            JOIN "user" u ON u.current_room_id = r.room_id
-            ORDER BY r.room_id;
-        `;
-        const result = await pool.query(query);
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Erreur BDD");
-    }
-});
-
-app.get('/api/all-users', async (req, res) => {
-    try {
-        const query = 'SELECT user_id, username, email, role FROM "user" ORDER BY user_id ASC';
-        const result = await pool.query(query);
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Erreur BDD");
-    }
-});
-
-// --- API VISUALISATION MARQUEURS ---
-app.get('/api/all-markers', async (req, res) => {
-    try {
-        const query = `
-            SELECT m.marker_id, m.room_id, m.timestamp_seconds, m.comment, m.category, u.username
-            FROM marker m
-            LEFT JOIN "user" u ON m.user_id = u.user_id
-            ORDER BY m.room_id ASC, m.timestamp_seconds ASC
-        `;
-        const result = await pool.query(query);
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Erreur BDD Marqueurs");
-    }
-});
-
 io.on('connection', (socket) => {
 
     socket.on('request_create_room', async () => {
@@ -98,50 +54,39 @@ io.on('connection', (socket) => {
         socket.emit('room_created', code);
     });
 
-    socket.on('explicit_leave', async (data) => {
-        const { roomCode, username } = data;
-        
-        try {
-            // On vérifie le rôle
-            const userCheck = await pool.query('SELECT role FROM "user" WHERE username = $1', [username]);
-            
-            if (userCheck.rowCount > 0 && userCheck.rows[0].role === 'guest') {
-                // C'est un invité qui a cliqué sur Quitter -> ON LE SUPPRIME DÉFINITIVEMENT
-                await pool.query('DELETE FROM "user" WHERE username = $1', [username]);
-                console.log(`[BDD] Invité ${username} supprimé suite à un départ volontaire.`);
-            }
-        } catch (err) {
-            console.error("Erreur SQL lors du départ volontaire:", err);
-        }
-    });
-
-    socket.on('join_room', async (data) => {
-        const { roomCode, username } = data;
+    socket.on('join_room', async ({ roomCode, username }) => {
         const roomIdInt = parseInt(roomCode);
 
         if (!rooms[roomCode]) {
             rooms[roomCode] = { users:[], controller: null };
         }
+
         const alreadyInRoom = rooms[roomCode].users.find(u => u.username === username);
         if (!alreadyInRoom) {
-            rooms[roomCode].users.push({ id: socket.id, username: username });
+            rooms[roomCode].users.push({ id: socket.id, username });
         }
-socket.join(roomCode);
 
-        // --- ANNULATION DE LA SUPPRESSION (Si F5) ---
+        socket.join(roomCode);
+
         if (roomCleanupTimers[roomCode]) {
             clearTimeout(roomCleanupTimers[roomCode]);
             delete roomCleanupTimers[roomCode];
-            console.log(`[SERVEUR] Suppression de la salle ${roomCode} annulée (quelqu'un est arrivé).`);
         }
 
         try {
             let userId;
-            const checkUser = await pool.query('SELECT user_id FROM "user" WHERE username = $1', [username]);
+
+            const checkUser = await pool.query(
+                'SELECT user_id FROM "user" WHERE username = $1',
+                [username]
+            );
 
             if (checkUser.rowCount > 0) {
                 userId = checkUser.rows[0].user_id;
-                await pool.query('UPDATE "user" SET current_room_id = $1 WHERE user_id = $2',[roomIdInt, userId]);
+                await pool.query(
+                    'UPDATE "user" SET current_room_id = $1 WHERE user_id = $2',
+                    [roomIdInt, userId]
+                );
             } else {
                 const fakeEmail = `${username}_${Date.now()}@guest.com`;
                 const insertUser = `
@@ -155,66 +100,67 @@ socket.join(roomCode);
 
             const checkRoom = await pool.query('SELECT * FROM room WHERE room_id = $1', [roomIdInt]);
             if (checkRoom.rowCount === 0) {
-                const insertRoom = `INSERT INTO room (room_id, name, host_id) VALUES ($1, $2, $3)`;
-                await pool.query(insertRoom,[roomIdInt, 'Salon ' + roomCode, userId]);
+                await pool.query(
+                    `INSERT INTO room (room_id, name, host_id) VALUES ($1, $2, $3)`,
+                    [roomIdInt, 'Salon ' + roomCode, userId]
+                );
             }
 
         } catch (err) {
-            console.error("Erreur SQL lors du join:", err);
+            console.error(err);
         }
 
         io.to(roomCode).emit('update_users', rooms[roomCode].users);
-        if (rooms[roomCode].controller) socket.emit('update_controller', rooms[roomCode].controller);
-        socket.to(roomCode).emit('receive_message', { username: 'Système', text: `${username} a rejoint.`, isSystem: true });
+
+        if (rooms[roomCode].controller) {
+            socket.emit('update_controller', rooms[roomCode].controller);
+        }
 
         const messages = await pool.query(`
-        SELECT c.timestamp_video_seconds, c.message_text, u.username
-        FROM chat c
-        LEFT JOIN "user" u ON c.user_id = u.user_id
-        WHERE c.room_id = $1
-        ORDER BY c.chat_id ASC
-    `, [roomIdInt]);
+            SELECT c.currentVideoTime, c.message_text, u.username
+            FROM chat c
+            LEFT JOIN "user" u ON c.user_id = u.user_id
+            WHERE c.room_id = $1
+            ORDER BY c.chat_id ASC
+        `, [roomIdInt]);
 
-socket.emit('chat_history', messages.rows);
-    });
-
-    socket.on('check_room_existence', (code) => {
-        const exists = !!rooms[code];
-        socket.emit('room_existence_result', { exists });
-    });
-
-    socket.on('change_video', (data) => {
-        if (rooms[data.roomCode]) io.to(data.roomCode).emit('load_video', data.videoId);
+        socket.emit('chat_history', messages.rows);
     });
 
     socket.on('send_message', async (data) => {
-    const { roomCode, username, text, currentVideoTime } = data;
-    const roomIdInt = parseInt(roomCode);
+        const { roomCode, username, message_text, currentVideoTime } = data;
+        const roomIdInt = parseInt(roomCode);
 
-    try {
-        // 1. récupérer user_id
-        const userRes = await pool.query(
-            'SELECT user_id FROM "user" WHERE username = $1',
-            [username]
-        );
+        try {
+            const userRes = await pool.query(
+                'SELECT user_id FROM "user" WHERE username = $1',
+                [username]
+            );
 
-        const userId = userRes.rowCount > 0 ? userRes.rows[0].user_id : null;
+            const userId = userRes.rowCount > 0 ? userRes.rows[0].user_id : null;
 
-        // 2. sauvegarder en base
-        await pool.query(
-            `INSERT INTO chat (room_id, user_id, timestamp_video_seconds, message_text)
-             VALUES ($1, $2, $3, $4)`,
-            [roomIdInt, userId, Math.floor(currentVideoTime), text]
-        );
+            await pool.query(
+                `INSERT INTO chat (room_id, user_id, currentVideoTime, message_text)
+                 VALUES ($1, $2, $3, $4)`,
+                [roomIdInt, userId, Math.floor(currentVideoTime || 0), message_text]
+            );
 
-        // 3. envoyer aux utilisateurs
-        io.to(roomCode).emit('receive_message', data);
+            // ✅ FORMAT UNIFIÉ envoyé au client
+            io.to(roomCode).emit('receive_message', {
+                username,
+                message_text,
+                currentVideoTime: Math.floor(currentVideoTime || 0),
+                isSystem: false
+            });
 
-    } catch (err) {
-        console.error("Erreur sauvegarde chat:", err);
-    }
-});
-    socket.on('typing', (data) => socket.to(data.roomCode).emit('user_typing', data.username));
+        } catch (err) {
+            console.error("Erreur sauvegarde chat:", err);
+        }
+    });
+
+    socket.on('typing', (data) => {
+        socket.to(data.roomCode).emit('user_typing', data.username);
+    });
 
     socket.on('claim_control', (data) => {
         if (rooms[data.roomCode]) {
@@ -223,199 +169,70 @@ socket.emit('chat_history', messages.rows);
         }
     });
 
-    socket.on('video_action', (data) => socket.to(data.roomCode).emit('sync_video', data));
-
-// --- DÉCONNEXION ---
-    socket.on('disconnect', async () => {
-        for (const code in rooms) {
-            const userIndex = rooms[code].users.findIndex(user => user.id === socket.id);
-            
-            if (userIndex !== -1) {
-                const username = rooms[code].users[userIndex].username;
-                
-                rooms[code].users.splice(userIndex, 1);
-                
-                if (rooms[code].controller === username) {
-                    rooms[code].controller = null;
-                    io.to(code).emit('update_controller', 'Personne');
-                }
-                io.to(code).emit('update_users', rooms[code].users);
-                
-                try {
-                    const userCheck = await pool.query('SELECT role FROM "user" WHERE username = $1', [username]);
-                    
-                    if (userCheck.rowCount > 0) {
-                        const role = userCheck.rows[0].role;
-                        if (role === 'guest') {
-                            await pool.query('DELETE FROM "user" WHERE username = $1', [username]);
-                        } else {
-                            await pool.query('UPDATE "user" SET current_room_id = NULL WHERE username = $1', [username]);
-                        }
-                    }
-
-                    if (rooms[code].users.length === 0) {
-                        console.log(`[SERVEUR] La salle ${code} est vide. Suppression dans 5 secondes...`);
-                        
-                        roomCleanupTimers[code] = setTimeout(async () => {
-                            try {
-                                const roomIdInt = parseInt(code);
-                                await pool.query('DELETE FROM room WHERE room_id = $1', [roomIdInt]);
-                                delete rooms[code];
-                                delete roomCleanupTimers[code];
-                                console.log(`[BDD] Salon ${code} supprimé définitivement.`);
-                            } catch (err) {
-                                console.error("Erreur suppression salle:", err);
-                            }
-                        }, 5000); // 5000ms = 5s
-                    }
-
-                } catch (err) {
-                    console.error("Erreur SQL déconnexion:", err);
-                }
-                
-                break;
-            }
-        }
+    socket.on('video_action', (data) => {
+        socket.to(data.roomCode).emit('sync_video', data);
     });
 
-    // --- GESTION DES MARQUEURS ---
-    socket.on('add_marker', async (data) => {
-        const { roomCode, username, timestamp, comment, category } = data;
-        const roomIdInt = parseInt(roomCode);
-
-        try {
-            const userRes = await pool.query('SELECT user_id FROM "user" WHERE username = $1',[username]);
-            let userId = null;
-            if (userRes.rowCount > 0) userId = userRes.rows[0].user_id;
-
-            // CORRECTIF : La ligne manquante est ici !
-            const insertQuery = `
-                INSERT INTO marker (room_id, user_id, timestamp_seconds, comment, category)
-                VALUES ($1, $2, $3, $4, $5)
-            `;
-            await pool.query(insertQuery, [roomIdInt, userId, timestamp, comment, category]);
-
-            const allMarkers = await pool.query(`
-                SELECT m.timestamp_seconds, m.comment, m.category, u.username 
-                FROM marker m LEFT JOIN "user" u ON m.user_id = u.user_id 
-                WHERE m.room_id = $1 ORDER BY m.timestamp_seconds ASC`, [roomIdInt]);
-
-            io.to(roomCode).emit('update_markers', allMarkers.rows);
-
-        } catch (err) {
-            console.error("Erreur ajout marqueur:", err);
+    socket.on('change_video', (data) => {
+        if (rooms[data.roomCode]) {
+            io.to(data.roomCode).emit('load_video', data.videoId);
         }
     });
 
     socket.on('request_markers', async (roomCode) => {
         const roomIdInt = parseInt(roomCode);
         try {
-            const query = `
+            const res = await pool.query(`
                 SELECT m.timestamp_seconds, m.comment, m.category, u.username
                 FROM marker m
                 LEFT JOIN "user" u ON m.user_id = u.user_id
                 WHERE m.room_id = $1
                 ORDER BY m.timestamp_seconds ASC
-            `;
-            const res = await pool.query(query, [roomIdInt]);
+            `, [roomIdInt]);
+
             socket.emit('update_markers', res.rows);
         } catch (err) {
-            console.error("Erreur chargement marqueurs:", err);
+            console.error(err);
         }
     });
-});
 
-async function cleanDatabase() {
-    try {
-        console.log("Nettoyage de la base de données...");
-        await pool.query('TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
-        console.log("Base de données nettoyée !");
-    } catch (err) {
-        console.error("Erreur nettoyage :", err);
-    }
-}
+    socket.on('add_marker', async (data) => {
+        const { roomCode, username, timestamp, comment, category } = data;
+        const roomIdInt = parseInt(roomCode);
 
-// --- VIDER TOUTE LA BASE DE DONNÉES (depuis testDB.html) ---
-app.post('/api/clean-db', async (req, res) => {
-    try {
-        console.log("[SERVEUR] Demande de nettoyage complet de la BDD...");
-        
-        await pool.query('TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
-        
-        rooms = {};
-        for (let timer in roomCleanupTimers) {
-            clearTimeout(roomCleanupTimers[timer]);
+        try {
+            const userRes = await pool.query(
+                'SELECT user_id FROM "user" WHERE username = $1',
+                [username]
+            );
+
+            let userId = null;
+            if (userRes.rowCount > 0) {
+                userId = userRes.rows[0].user_id;
+            }
+
+            await pool.query(
+                `INSERT INTO marker (room_id, user_id, timestamp_seconds, comment, category)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [roomIdInt, userId, timestamp, comment, category]
+            );
+
+            const allMarkers = await pool.query(`
+                SELECT m.timestamp_seconds, m.comment, m.category, u.username 
+                FROM marker m 
+                LEFT JOIN "user" u ON m.user_id = u.user_id 
+                WHERE m.room_id = $1 
+                ORDER BY m.timestamp_seconds ASC
+            `, [roomIdInt]);
+
+            io.to(roomCode).emit('update_markers', allMarkers.rows);
+
+        } catch (err) {
+            console.error(err);
         }
-        roomCleanupTimers = {};
-
-        console.log("[SERVEUR] Base de données et mémoire nettoyées !");
-        res.json({ success: true, message: "Base de données nettoyée." });
-    } catch (err) {
-        console.error("Erreur nettoyage BDD :", err);
-        res.status(500).json({ success: false, message: "Erreur serveur lors du nettoyage." });
-    }
-});
-
-app.post('/api/login', async (req, res) => {
-    const { email, username, password } = req.body;
-    if ((!email && !username) || !password) {
-        return res.status(400).json({ success: false, message: "Champs manquants" });
-    }
-
-    try {
-        let result;
-        if (email) {
-            result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
-        } else {
-            result = await pool.query('SELECT * FROM "user" WHERE username = $1', [username]);
-        }
-
-        if (result.rowCount === 0) return res.json({ success: false, message: "Utilisateur introuvable" });
-
-        const user = result.rows[0];
-        const ok = await bcrypt.compare(password, user.password);
-
-        if (!ok) return res.json({ success: false, message: "Mot de passe incorrect" });
-
-        res.json({ success: true, username: user.username });
-    } catch (e) {
-        res.status(500).json({ success: false, message: "Erreur serveur" });
-    }
-});
-
-app.post('/api/signup', async (req, res) => {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) return res.status(400).json({ success: false, message: "Tous les champs sont obligatoires." });
-
-    try {
-        const checkEmail = await pool.query('SELECT user_id FROM "user" WHERE email = $1', [email]);
-        if (checkEmail.rowCount > 0) return res.json({ success: false, message: "Email déjà utilisé." });
-
-        const checkUsername = await pool.query('SELECT * FROM "user" WHERE username = $1', [username]);
-        if (checkUsername.rowCount > 0) return res.json({ success: false, message: "Nom d'utilisateur déjà pris." });
-
-        const hash = await bcrypt.hash(password, 10);
-        await pool.query(
-            'INSERT INTO "user" (username, email, password) VALUES ($1, $2, $3)', 
-            [username, email, hash]
-        );
-        res.json({ success: true, message: "Compte créé avec succès" });
-    } catch (err) {
-        res.status(500).json({ success: false, message: "Erreur serveur" });
-    }
-});
-
-
-
-/*
-const PORT = 3000;
-cleanDatabase().then(() => {
-    server.listen(PORT, () => {
-       console.log(`Serveur lancé sur http://localhost:${PORT}`);
     });
-});
-*/
 
+});
 
 const PORT = 3000;
 server.listen(PORT, () => {
