@@ -11,7 +11,7 @@ app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- CONFIG DB ---
+// --- DB ---
 const pool = new Pool({
     user: 'uapv2401716',
     host: '127.0.0.1',
@@ -22,24 +22,22 @@ const pool = new Pool({
 
 // --- STATIC ---
 app.use('/templates', express.static(path.join(__dirname, '../templates')));
+app.use(express.static(path.join(__dirname, '../templates/front')));
 
-// --- PATH FRONT ---
+// --- FRONT ROUTES ---
 const cheminVues = path.join(__dirname, '../templates/front/');
 
-// --- ROUTES FRONT ---
 app.get('/', (req, res) => res.sendFile(path.join(cheminVues, 'index.html')));
 app.get('/room', (req, res) => res.sendFile(path.join(cheminVues, 'room.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(cheminVues, 'login.html')));
 app.get('/signup', (req, res) => res.sendFile(path.join(cheminVues, 'signup.html')));
+
 app.get('/testDB.html', (req, res) =>
     res.sendFile(path.join(__dirname, '../testDB.html'))
 );
 
-// ============================
-// ✅ API DEBUG BDD
-// ============================
+// ================= API =================
 
-// USERS + ROOMS
 app.get('/api/rooms-users', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -50,59 +48,51 @@ app.get('/api/rooms-users', async (req, res) => {
         `);
         res.json(result.rows);
     } catch (err) {
-        console.error("rooms-users error:", err);
+        console.error(err);
         res.status(500).send("Erreur BDD");
     }
 });
 
-// ALL USERS
 app.get('/api/all-users', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT user_id, username, email, role 
-            FROM "user" 
-            ORDER BY user_id ASC
+            FROM "user"
         `);
         res.json(result.rows);
     } catch (err) {
-        console.error("all-users error:", err);
+        console.error(err);
         res.status(500).send("Erreur BDD");
     }
 });
 
-// ALL MARKERS
 app.get('/api/all-markers', async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT m.marker_id, m.room_id, m.timestamp_seconds, m.comment, m.category, u.username
+            SELECT m.*, u.username
             FROM marker m
             LEFT JOIN "user" u ON m.user_id = u.user_id
-            ORDER BY m.room_id ASC, m.timestamp_seconds ASC
         `);
         res.json(result.rows);
     } catch (err) {
-        console.error("all-markers error:", err);
-        res.status(500).send("Erreur BDD Marqueurs");
+        console.error(err);
+        res.status(500).send("Erreur BDD");
     }
 });
 
-// CLEAN DB
 app.post('/api/clean-db', async (req, res) => {
     try {
         await pool.query(`
             TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE
         `);
-
-        res.json({ success: true, message: "Base de données nettoyée." });
+        res.json({ success: true });
     } catch (err) {
-        console.error("clean-db error:", err);
+        console.error(err);
         res.status(500).json({ success: false });
     }
 });
 
-// ============================
-// SOCKET.IO
-// ============================
+// ================= SOCKET =================
 
 let rooms = {};
 
@@ -122,8 +112,13 @@ io.on('connection', (socket) => {
         socket.emit('room_created', code);
     });
 
+    // ✅ AJOUT : vérification existence room
+    socket.on('check_room_existence', (code) => {
+        const exists = !!rooms[code];
+        socket.emit('room_existence_result', { exists });
+    });
+
     socket.on('join_room', async ({ roomCode, username }) => {
-        const roomIdInt = parseInt(roomCode);
 
         if (!rooms[roomCode]) {
             rooms[roomCode] = { users: [], controller: null };
@@ -148,7 +143,7 @@ io.on('connection', (socket) => {
 
                 await pool.query(
                     'UPDATE "user" SET current_room_id = $1 WHERE user_id = $2',
-                    [roomIdInt, userId]
+                    [parseInt(roomCode), userId]
                 );
             } else {
                 const email = `${username}_${Date.now()}@guest.com`;
@@ -157,21 +152,9 @@ io.on('connection', (socket) => {
                     INSERT INTO "user"(username,email,password,role,current_room_id)
                     VALUES ($1,$2,'guest','guest',$3)
                     RETURNING user_id
-                `, [username, email, roomIdInt]);
+                `, [username, email, parseInt(roomCode)]);
 
                 userId = insert.rows[0].user_id;
-            }
-
-            const roomExists = await pool.query(
-                'SELECT * FROM room WHERE room_id = $1',
-                [roomIdInt]
-            );
-
-            if (roomExists.rowCount === 0) {
-                await pool.query(
-                    'INSERT INTO room(room_id,name,host_id) VALUES ($1,$2,$3)',
-                    [roomIdInt, 'Room ' + roomCode, userId]
-                );
             }
 
         } catch (err) {
@@ -182,8 +165,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_message', async ({ roomCode, username, message_text, currentVideoTime }) => {
-        const roomIdInt = parseInt(roomCode);
-
         try {
             const userRes = await pool.query(
                 'SELECT user_id FROM "user" WHERE username = $1',
@@ -195,7 +176,7 @@ io.on('connection', (socket) => {
             await pool.query(`
                 INSERT INTO chat(room_id,user_id,currentVideoTime,message_text)
                 VALUES ($1,$2,$3,$4)
-            `, [roomIdInt, userId, Math.floor(currentVideoTime || 0), message_text]);
+            `, [parseInt(roomCode), userId, Math.floor(currentVideoTime || 0), message_text]);
 
             io.to(roomCode).emit('receive_message', {
                 username,
@@ -209,9 +190,16 @@ io.on('connection', (socket) => {
         }
     });
 
-});
+    // ✅ VIDEO SYNC
+    socket.on('load_video', ({ roomCode, videoId }) => {
+        io.to(roomCode).emit('load_video', videoId);
+    });
 
-// ============================
+    socket.on('video_action', ({ roomCode, type, currentTime }) => {
+        io.to(roomCode).emit('sync_video', { type, currentTime });
+    });
+
+});
 
 const PORT = 3000;
 server.listen(PORT, () => {

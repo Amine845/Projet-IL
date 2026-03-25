@@ -11,77 +11,19 @@ function init_room() {
         return;
     }
 
-    const displayCode = document.getElementById('display-code');
-    if (displayCode) displayCode.textContent = roomCode;
+    document.getElementById('display-code').textContent = roomCode;
 
     socket.emit('join_room', { roomCode, username });
-    socket.emit('request_markers', roomCode);
 
-    // --- DOM CHAT ---
+    // ================= CHAT =================
     const chatBox = document.getElementById('chat-box');
-    const usersList = document.getElementById('users-list');
     const msgInput = document.getElementById('msg-input');
-    const typingIndicator = document.getElementById('typing-indicator');
-    const btnSend = document.getElementById('btn-send');
 
-    // =========================
-    // ✅ VIDEO SEARCH HANDLER (CORRIGÉ)
-    // =========================
-    const videoSearchForm = document.getElementById('video-search-form');
-
-    if (videoSearchForm) {
-        videoSearchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-
-            const input = videoSearchForm.querySelector('input');
-            const videoId = input?.value?.trim();
-
-            if (videoId && window.player && window.player.loadVideoById) {
-                window.player.loadVideoById(videoId);
-            }
-        });
-    }
-
-    // =========================
-    // USERS
-    // =========================
-    socket.on('update_users', (users) => {
-        if (usersList) {
-            usersList.innerHTML = users.map(u =>
-                `<li class="text-white"><span style="color:#0f0;">●</span> ${u.username}</li>`
-            ).join('');
-        }
-    });
-
-    // =========================
-    // CHAT
-    // =========================
-    socket.on('receive_message', (data) => {
-        if (!chatBox) return;
-
-        const div = document.createElement('div');
-
-        if (data.isSystem) {
-            div.className = 'system-msg';
-            div.textContent = data.text;
-        } else {
-            const time = data.currentVideoTime || 0;
-            const min = Math.floor(time / 60);
-            const sec = Math.floor(time % 60);
-            const formatted = `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
-
-            div.innerHTML = `<strong>[${formatted}] ${data.username}:</strong> ${data.message_text}`;
-        }
-
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
-
-    function sendMessage() {
-        if (msgInput && msgInput.value.trim()) {
+    document.getElementById('btn-send').addEventListener('click', () => {
+        if (msgInput.value.trim()) {
 
             let currentVideoTime = 0;
-            if (window.player && window.player.getCurrentTime) {
+            if (window.player) {
                 currentVideoTime = window.player.getCurrentTime();
             }
 
@@ -94,138 +36,99 @@ function init_room() {
 
             msgInput.value = '';
         }
-    }
+    });
 
-    if (btnSend) {
-        btnSend.type = "button";
-        btnSend.addEventListener('click', sendMessage);
-    }
+    socket.on('receive_message', (data) => {
+        const div = document.createElement('div');
 
-    if (msgInput) {
-        msgInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
+        const time = data.currentVideoTime || 0;
+        const min = Math.floor(time / 60);
+        const sec = Math.floor(time % 60);
 
-        msgInput.addEventListener('input', () => {
-            socket.emit('typing', { roomCode, username });
-        });
-    }
+        div.innerHTML = `<strong>[${min}:${sec}] ${data.username}:</strong> ${data.message_text}`;
+        chatBox.appendChild(div);
+    });
 
-    let typingTimer;
-    socket.on('user_typing', (userTyping) => {
-        if (typingIndicator) {
-            typingIndicator.textContent = `${userTyping} est en train d'écrire...`;
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(() => {
-                typingIndicator.textContent = '';
-            }, 3000);
+    // ================= VIDEO SEARCH =================
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const resultsContainer = document.getElementById('results-container');
+
+    const YOUTUBE_API_KEY = "AIzaSyBw4LHeP6A8wnFZmvnHy01umvhWJieDlPU";
+
+    searchForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        resultsContainer.innerHTML = "Chargement...";
+
+        try {
+            const res = await fetch(
+                `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=6&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`
+            );
+
+            const data = await res.json();
+
+            resultsContainer.innerHTML = "";
+
+            data.items.forEach(item => {
+                const videoId = item.id.videoId;
+                const title = item.snippet.title;
+                const thumbnail = item.snippet.thumbnails.medium.url;
+
+                const col = document.createElement('div');
+                col.className = "col-md-4";
+
+                col.innerHTML = `
+                    <div class="card bg-dark text-white border-secondary">
+                        <img src="${thumbnail}" class="card-img-top">
+                        <div class="card-body">
+                            <p class="card-text small">${title}</p>
+                            <button class="btn btn-primary btn-sm w-100">Lire</button>
+                        </div>
+                    </div>
+                `;
+
+                col.querySelector('button').addEventListener('click', () => {
+
+                    // Charge vidéo localement
+                    if (window.player) {
+                        window.player.loadVideoById(videoId);
+                    }
+
+                    // Sync avec les autres
+                    socket.emit('load_video', { roomCode, videoId });
+
+                });
+
+                resultsContainer.appendChild(col);
+            });
+
+        } catch (err) {
+            console.error(err);
+            resultsContainer.innerHTML = "Erreur lors de la recherche.";
         }
     });
 
-    // =========================
-    // LEAVE
-    // =========================
-    const btnLeave = document.getElementById('btn-leave-room');
-    if (btnLeave) {
-        btnLeave.addEventListener('click', () => {
-            socket.emit('explicit_leave', { roomCode, username });
-            window.location.href = '/';
-        });
-    }
-
-    // =========================
-    // YOUTUBE
-    // =========================
-    window.onYouTubeIframeAPIReady = function () {
-        window.player = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            videoId: '',
-            playerVars: { autoplay: 0, controls: 1 },
-            events: { onStateChange: onPlayerStateChange }
-        });
-    };
-
-    const tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
-
-    // =========================
-    // SYNC VIDEO
-    // =========================
-    let currentController = null;
-    let isSyncing = false;
-
-    const btnControl = document.getElementById('btn-control');
-    if (btnControl) {
-        btnControl.type = "button";
-
-        btnControl.addEventListener('click', () => {
-            socket.emit('claim_control', { roomCode, username });
-        });
-    }
-
-    socket.on('update_controller', (name) => {
-        currentController = name;
-        const ctrlName = document.getElementById('controller-name');
-        if (ctrlName) ctrlName.textContent = name;
-    });
-
+    // réception vidéo sync
     socket.on('load_video', (videoId) => {
-        if (window.player && window.player.loadVideoById) {
+        if (window.player) {
             window.player.loadVideoById(videoId);
         }
     });
 
-    function onPlayerStateChange(event) {
-        if (currentController === username && !isSyncing) {
-            const state = event.data;
-            const time = window.player.getCurrentTime();
-
-            if (state === YT.PlayerState.PLAYING) {
-                socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
-            } else if (state === YT.PlayerState.PAUSED) {
-                socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
-            }
-        }
-    }
-
+    // ================= SYNC VIDEO =================
     socket.on('sync_video', (data) => {
-        if (!window.player || !window.player.seekTo) return;
-
-        isSyncing = true;
+        if (!window.player) return;
 
         if (Math.abs(window.player.getCurrentTime() - data.currentTime) > 1) {
             window.player.seekTo(data.currentTime);
         }
 
         if (data.type === 'play') window.player.playVideo();
-        else if (data.type === 'pause') window.player.pauseVideo();
-
-        setTimeout(() => { isSyncing = false; }, 500);
-    });
-
-    // =========================
-    // CHAT HISTORY
-    // =========================
-    socket.on('chat_history', (messages) => {
-        if (!chatBox) return;
-
-        chatBox.innerHTML = "";
-
-        messages.forEach(msg => {
-            const div = document.createElement('div');
-
-            const time = msg.currentvideotime || 0;
-            const min = Math.floor(time / 60);
-            const sec = Math.floor(time % 60);
-            const formatted = `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
-
-            div.innerHTML = `<strong>[${formatted}] ${msg.username}:</strong> ${msg.message_text}`;
-            chatBox.appendChild(div);
-        });
-
-        chatBox.scrollTop = chatBox.scrollHeight;
+        if (data.type === 'pause') window.player.pauseVideo();
     });
 
 }
