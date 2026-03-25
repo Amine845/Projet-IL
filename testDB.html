@@ -1,245 +1,242 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Visualisation Salles & Utilisateurs</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #222; color: white; }
-        .floating-frame { border-radius: 10px; box-shadow: black 0px 0px 20px; background-color: rgba(30, 30, 30, 0.9); }
-        .table-dark { --bs-table-bg: transparent; }
-    </style>
+<meta charset="UTF-8">
+<title>Visualisation Salles & Utilisateurs</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+    body { background-color: #222; color: white; }
+    .floating-frame { border-radius: 10px; box-shadow: black 0px 0px 20px; background-color: rgba(30, 30, 30, 0.9); }
+    .table-dark { --bs-table-bg: transparent; }
+</style>
 </head>
+
 <body class="p-5" style="background-image: url(/templates/src/background2.png); background-size: cover; background-attachment: fixed;">
 
-    <div class="container floating-frame p-4">
-        
-        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
-            <h1 class="text-warning mb-0">État de la Base de Données</h1>
-            <div>
-                <a href="/" class="btn btn-outline-light me-2">Retour au site</a>
-                <button id="btn-refresh" class="btn btn-primary me-2">Actualiser Tout</button>
-                <button id="btn-clean-db" class="btn btn-danger shadow">Vider la BDD</button>
-            </div>
-        </div>
-        
-        <!-- SECTION 1 : SALLES -->
-        <h4 class="text-info mb-3">1. Utilisateurs actifs (Par Salle)</h4>
-        <div class="card bg-dark border-secondary mb-5">
-            <div class="card-body p-0">
-                <table class="table table-dark table-striped align-middle mb-0" style="border-radius: 10px; overflow: hidden;">
-                    <thead>
-                        <tr>
-                            <th class="ps-3" style="width: 15%;">ID Salle</th>
-                            <th>Utilisateurs connectés</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rooms-content"></tbody>
-                </table>
-            </div>
-        </div>
+<div class="container floating-frame p-4">
 
-        <!-- SECTION 2 : COMPTES -->
-        <h4 class="text-info mb-3">2. Tous les Comptes (Table "user")</h4>
-        <div class="card bg-dark border-secondary mb-5">
-            <div class="card-body p-0">
-                <table class="table table-dark table-striped align-middle mb-0" style="border-radius: 10px; overflow: hidden;">
-                    <thead>
-                        <tr>
-                            <th class="ps-3">ID</th>
-                            <th>Pseudo</th>
-                            <th>Email</th>
-                            <th>Rôle</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-content"></tbody>
-                </table>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+        <h1 class="text-warning mb-0">État de la Base de Données</h1>
+        <div>
+            <a href="/" class="btn btn-outline-light me-2">Retour au site</a>
+            <button id="btn-refresh" class="btn btn-primary me-2">Actualiser Tout</button>
+            <button id="btn-clean-db" class="btn btn-danger shadow">Vider la BDD</button>
         </div>
-
-        <!-- SECTION 3 : MARQUEURS -->
-        <h4 class="text-info mb-3">3. Analyses / Marqueurs (Par Salle)</h4>
-        <div class="card bg-dark border-secondary">
-            <div class="card-body p-0">
-                <table class="table table-dark table-striped align-middle mb-0" style="border-radius: 10px; overflow: hidden;">
-                    <thead>
-                        <tr>
-                            <th class="ps-3" style="width: 15%;">ID Salle</th>
-                            <th>Marqueurs enregistrés</th>
-                        </tr>
-                    </thead>
-                    <tbody id="markers-content"></tbody>
-                </table>
-            </div>
-        </div>
-
     </div>
 
-    <script>
-        const roomsTbody = document.getElementById('rooms-content');
-        const usersTbody = document.getElementById('users-content');
-        const markersTbody = document.getElementById('markers-content');
-        const btn = document.getElementById('btn-refresh');
+    <!-- SALLES -->
+    <h4 class="text-info mb-3">1. Utilisateurs actifs (Par Salle)</h4>
+    <div class="card bg-dark border-secondary mb-5">
+        <div class="card-body p-0">
+            <table class="table table-dark table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>ID Salle</th>
+                        <th>Utilisateurs connectés</th>
+                    </tr>
+                </thead>
+                <tbody id="rooms-content"></tbody>
+            </table>
+        </div>
+    </div>
 
-        // Formater les secondes en MM:SS
-        function formatTime(seconds) {
-            const min = Math.floor(seconds / 60);
-            const sec = Math.floor(seconds % 60);
-            return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+    <!-- USERS -->
+    <h4 class="text-info mb-3">2. Tous les Comptes</h4>
+    <div class="card bg-dark border-secondary mb-5">
+        <div class="card-body p-0">
+            <table class="table table-dark table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pseudo</th>
+                        <th>Email</th>
+                        <th>Rôle</th>
+                    </tr>
+                </thead>
+                <tbody id="users-content"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MARKERS -->
+    <h4 class="text-info mb-3">3. Marqueurs</h4>
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <table class="table table-dark table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>ID Salle</th>
+                        <th>Marqueurs</th>
+                    </tr>
+                </thead>
+                <tbody id="markers-content"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const roomsTbody = document.getElementById('rooms-content');
+const usersTbody = document.getElementById('users-content');
+const markersTbody = document.getElementById('markers-content');
+const btnRefresh = document.getElementById('btn-refresh');
+
+// ---------- UTIL ----------
+function formatTime(seconds) {
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+}
+
+async function safeFetch(url, options = {}) {
+    try {
+        const res = await fetch(url, options);
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
         }
 
-        // --- CHARGEMENT DES SALLES ---
-        async function loadRooms() {
-            roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-light">Chargement...</td></tr>';
-            try {
-                const response = await fetch('/api/rooms-users');
-                const data = await response.json();
-                roomsTbody.innerHTML = '';
+        return await res.json();
+    } catch (err) {
+        console.error(`Erreur fetch ${url}:`, err);
+        return null;
+    }
+}
 
-                if(data.length === 0) {
-                    roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-white fst-italic">Aucun utilisateur en salle.</td></tr>';
-                    return;
-                }
+// ---------- ROOMS ----------
+async function loadRooms() {
+    roomsTbody.innerHTML = '<tr><td colspan="2">Chargement...</td></tr>';
 
-                const roomsMap = {};
-                data.forEach(row => {
-                    if (!roomsMap[row.room_id]) roomsMap[row.room_id] =[];
-                    roomsMap[row.room_id].push({ username: row.username, email: row.email });
-                });
+    const data = await safeFetch('/api/rooms-users');
 
-                for (const [roomId, users] of Object.entries(roomsMap)) {
-                    let usersHtml = '<ul class="list-group list-group-flush rounded">';
-                    users.forEach(u => {
-                        usersHtml += `
-                            <li class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center px-0">
-                                <span class="fw-bold text-success">● ${u.username}</span>
-                                <span class="small text-info">${u.email}</span>
-                            </li>`;
-                    });
-                    usersHtml += '</ul>';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="fw-bold text-warning fs-5 ps-3">#${roomId}</td><td>${usersHtml}</td>`;
-                    roomsTbody.appendChild(tr);
-                }
-            } catch (error) {
-                console.error(error);
-                roomsTbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Erreur API Rooms</td></tr>';
-            }
-        }
+    if (!data) {
+        roomsTbody.innerHTML = '<tr><td colspan="2" class="text-danger">Erreur API Rooms</td></tr>';
+        return;
+    }
 
-        // --- CHARGEMENT DES COMPTES ---
-        async function loadAllUsers() {
-            usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-light">Chargement...</td></tr>';
-            try {
-                const response = await fetch('/api/all-users'); 
-                const data = await response.json();
-                usersTbody.innerHTML = '';
+    if (data.length === 0) {
+        roomsTbody.innerHTML = '<tr><td colspan="2">Aucune donnée</td></tr>';
+        return;
+    }
 
-                if(data.length === 0) {
-                    usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-white fst-italic">Table vide.</td></tr>';
-                    return;
-                }
+    const map = {};
+    data.forEach(row => {
+        if (!map[row.room_id]) map[row.room_id] = [];
+        map[row.room_id].push(row);
+    });
 
-                data.forEach(user => {
-                    const roleBadge = user.role === 'guest' ? 'bg-secondary' : 'bg-primary';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="ps-3">${user.user_id}</td>
-                        <td class="fw-bold text-white">${user.username}</td>
-                        <td class="text-info">${user.email}</td>
-                        <td><span class="badge ${roleBadge}">${user.role}</span></td>
-                    `;
-                    usersTbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error(error);
-                usersTbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erreur API Users</td></tr>';
-            }
-        }
+    roomsTbody.innerHTML = '';
 
-        // --- CHARGEMENT DES MARQUEURS ---
-        async function loadAllMarkers() {
-            markersTbody.innerHTML = '<tr><td colspan="2" class="text-center text-light">Chargement...</td></tr>';
-            try {
-                const response = await fetch('/api/all-markers'); 
-                const data = await response.json();
-                markersTbody.innerHTML = '';
+    for (const [roomId, users] of Object.entries(map)) {
+        let html = '<ul class="list-group list-group-flush">';
 
-                if(data.length === 0) {
-                    markersTbody.innerHTML = '<tr><td colspan="2" class="text-center text-white fst-italic">Aucun marqueur enregistré.</td></tr>';
-                    return;
-                }
-
-                const markersMap = {};
-                data.forEach(row => {
-                    if (!markersMap[row.room_id]) markersMap[row.room_id] = [];
-                    markersMap[row.room_id].push(row);
-                });
-
-                const colorMap = {
-                    'info': 'bg-primary',
-                    'success': 'bg-success',
-                    'danger': 'bg-danger',
-                    'warning': 'bg-warning'
-                };
-
-                for (const [roomId, markers] of Object.entries(markersMap)) {
-                    let markersHtml = '<ul class="list-group list-group-flush rounded">';
-                    markers.forEach(m => {
-                        const badgeColor = colorMap[m.category] || 'bg-primary';
-                        const author = m.username ? m.username : '<span style="color: #FFE5E5;" class="fst-italic">Utilisateur supprimé</span>';
-
-                        markersHtml += `
-                            <li class="list-group-item bg-transparent text-white border-secondary d-flex align-items-center px-0">
-                                <span class="badge ${badgeColor} me-3" style="min-width: 50px;">${formatTime(m.timestamp_seconds)}</span>
-                                <span class="fw-bold text-light me-2">${author} :</span>
-                                <span class="text-white-50">${m.comment}</span>
-                            </li>`;
-                    });
-                    markersHtml += '</ul>';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="fw-bold text-warning fs-5 ps-3">#${roomId}</td><td>${markersHtml}</td>`;
-                    markersTbody.appendChild(tr);
-                }
-            } catch (error) {
-                console.error(error);
-                markersTbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Erreur API Marqueurs</td></tr>';
-            }
-        }
-
-        // --- GLOBAL ---
-        function refreshAll() {
-            loadRooms();
-            loadAllUsers();
-            loadAllMarkers();
-        }
-
-        refreshAll();
-        btn.addEventListener('click', refreshAll);
-
-        // --- gestion bouton vider bdd ---
-        const btnCleanDb = document.getElementById('btn-clean-db');
-        
-        btnCleanDb.addEventListener('click', async () => {
-            const confirmation = confirm("ATTENTION ! Voulez-vous vraiment vider TOUTE la base de données ?\n\nToutes les salles, utilisateurs et marqueurs seront supprimés définitivement.");
-            
-            if (confirmation) {
-                try {
-                    const response = await fetch('/api/clean-db', { method: 'POST' });
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        alert("Succès : " + data.message);
-                        refreshAll();
-                    } else {
-                        alert("Erreur : " + data.message);
-                    }
-                } catch (error) {
-                    console.error(error);
-                    alert("Erreur de communication avec le serveur.");
-                }
-            }
+        users.forEach(u => {
+            html += `<li class="list-group-item bg-transparent text-white border-secondary">
+                        ${u.username} <span class="text-info">(${u.email})</span>
+                     </li>`;
         });
-    </script>
+
+        html += '</ul>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>#${roomId}</td><td>${html}</td>`;
+        roomsTbody.appendChild(tr);
+    }
+}
+
+// ---------- USERS ----------
+async function loadUsers() {
+    usersTbody.innerHTML = '<tr><td colspan="4">Chargement...</td></tr>';
+
+    const data = await safeFetch('/api/all-users');
+
+    if (!data) {
+        usersTbody.innerHTML = '<tr><td colspan="4" class="text-danger">Erreur API Users</td></tr>';
+        return;
+    }
+
+    usersTbody.innerHTML = '';
+
+    data.forEach(user => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+            <td>${user.user_id}</td>
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td>${user.role}</td>
+        `;
+
+        usersTbody.appendChild(tr);
+    });
+}
+
+// ---------- MARKERS ----------
+async function loadMarkers() {
+    markersTbody.innerHTML = '<tr><td colspan="2">Chargement...</td></tr>';
+
+    const data = await safeFetch('/api/all-markers');
+
+    if (!data) {
+        markersTbody.innerHTML = '<tr><td colspan="2" class="text-danger">Erreur API Markers</td></tr>';
+        return;
+    }
+
+    const map = {};
+    data.forEach(m => {
+        if (!map[m.room_id]) map[m.room_id] = [];
+        map[m.room_id].push(m);
+    });
+
+    markersTbody.innerHTML = '';
+
+    for (const [roomId, markers] of Object.entries(map)) {
+        let html = '<ul class="list-group list-group-flush">';
+
+        markers.forEach(m => {
+            html += `<li class="list-group-item bg-transparent text-white border-secondary">
+                        [${formatTime(m.timestamp_seconds)}] 
+                        <b>${m.username || 'Utilisateur supprimé'}</b> :
+                        ${m.comment}
+                     </li>`;
+        });
+
+        html += '</ul>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>#${roomId}</td><td>${html}</td>`;
+        markersTbody.appendChild(tr);
+    }
+}
+
+// ---------- CLEAN DB ----------
+document.getElementById('btn-clean-db').addEventListener('click', async () => {
+    if (!confirm("Supprimer toute la base de données ?")) return;
+
+    const res = await fetch('/api/clean-db', { method: 'POST' });
+
+    if (res.ok) {
+        alert("BDD nettoyée");
+        refreshAll();
+    } else {
+        alert("Erreur lors du nettoyage");
+    }
+});
+
+// ---------- GLOBAL ----------
+function refreshAll() {
+    loadRooms();
+    loadUsers();
+    loadMarkers();
+}
+
+btnRefresh.addEventListener('click', refreshAll);
+
+refreshAll();
+</script>
+
 </body>
 </html>
