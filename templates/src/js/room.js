@@ -411,6 +411,22 @@ function init_room() {
         }).join('');
     });
 
+
+
+    socket.on('chat_history', (messages) => {
+    if (!chatBox) return;
+
+    chatBox.innerHTML = ""; // reset
+
+    messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>[${formatTime(msg.timestamp_video_seconds)}] ${msg.username || 'Invité'}:</strong> ${msg.message_text}`;
+        chatBox.appendChild(div);
+    });
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
 }
 
 document.addEventListener('DOMContentLoaded', init_room);
