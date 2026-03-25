@@ -1,9 +1,7 @@
-// control/server.js
-
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
-const { Pool } = require('pg');
+const { Pool } = require('pg'); 
 const path = require('path');
 
 const app = express();
@@ -13,7 +11,7 @@ app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- DB ---
+// --- CONFIG DB ---
 const pool = new Pool({
     user: 'uapv2401716',
     host: '127.0.0.1',
@@ -22,15 +20,24 @@ const pool = new Pool({
     port: 5432,
 });
 
-// --- STATIC ---
+// --- STATIC FILES ---
 app.use('/templates', express.static(path.join(__dirname, '../templates')));
 
-const views = path.join(__dirname, '../templates/front/');
+// --- PATHS ---
+const cheminVues = path.join(__dirname, '../templates/front/');
 
-app.get('/', (req, res) => res.sendFile(path.join(views, 'index.html')));
-app.get('/room', (req, res) => res.sendFile(path.join(views, 'room.html')));
+// --- ROUTES FRONT ---
+app.get('/', (req, res) => res.sendFile(path.join(cheminVues, 'index.html')));
+app.get('/room', (req, res) => res.sendFile(path.join(cheminVues, 'room.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(cheminVues, 'login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(cheminVues, 'signup.html')));
 
-// --- SOCKET ---
+// --- FIX IMPORTANT ---
+app.get('/testDB.html', (req, res) =>
+    res.sendFile(path.join(__dirname, '../testDB.html'))
+);
+
+// --- SOCKET.IO ---
 let rooms = {};
 
 function generateRoomCode() {
@@ -63,12 +70,12 @@ io.on('connection', (socket) => {
         socket.join(roomCode);
 
         try {
-            let userId;
-
             const userRes = await pool.query(
                 'SELECT user_id FROM "user" WHERE username = $1',
                 [username]
             );
+
+            let userId;
 
             if (userRes.rowCount > 0) {
                 userId = userRes.rows[0].user_id;
@@ -81,7 +88,8 @@ io.on('connection', (socket) => {
 
                 const insert = await pool.query(
                     `INSERT INTO "user"(username,email,password,role,current_room_id)
-                     VALUES ($1,$2,'guest','guest',$3) RETURNING user_id`,
+                     VALUES ($1,$2,'guest','guest',$3)
+                     RETURNING user_id`,
                     [username, email, roomIdInt]
                 );
 
