@@ -177,7 +177,33 @@ socket.join(roomCode);
         if (rooms[data.roomCode]) io.to(data.roomCode).emit('load_video', data.videoId);
     });
 
-    socket.on('send_message', (data) => io.to(data.roomCode).emit('receive_message', data));
+    socket.on('send_message', async (data) => {
+    const { roomCode, username, text, currentVideoTime } = data;
+    const roomIdInt = parseInt(roomCode);
+
+    try {
+        // 1. récupérer user_id
+        const userRes = await pool.query(
+            'SELECT user_id FROM "user" WHERE username = $1',
+            [username]
+        );
+
+        const userId = userRes.rowCount > 0 ? userRes.rows[0].user_id : null;
+
+        // 2. sauvegarder en base
+        await pool.query(
+            `INSERT INTO chat (room_id, user_id, timestamp_video_seconds, message_text)
+             VALUES ($1, $2, $3, $4)`,
+            [roomIdInt, userId, Math.floor(currentVideoTime), text]
+        );
+
+        // 3. envoyer aux utilisateurs
+        io.to(roomCode).emit('receive_message', data);
+
+    } catch (err) {
+        console.error("Erreur sauvegarde chat:", err);
+    }
+});
     socket.on('typing', (data) => socket.to(data.roomCode).emit('user_typing', data.username));
 
     socket.on('claim_control', (data) => {

@@ -25,13 +25,14 @@ CREATE TABLE playlist (
     video_count INTEGER DEFAULT 0
 );
 
--- CREATE TABLE chat (
---     chat_id SERIAL PRIMARY KEY,
---     room_id INTEGER REFERENCES room(room_id) ON DELETE CASCADE,
---     timestamp_seconds INTEGER DEFAULT 0
---     user_name TEXT NOT NULL,
---     message_text TEXT NOT NULL,
--- );
+CREATE TABLE chat (
+    chat_id SERIAL PRIMARY KEY,
+    room_id INTEGER REFERENCES room(room_id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES "user"(user_id) ON DELETE SET NULL,
+    timestamp_video_seconds INTEGER DEFAULT 0,
+    message_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE video (
     video_id SERIAL PRIMARY KEY,
