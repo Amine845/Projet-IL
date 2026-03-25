@@ -25,27 +25,26 @@ function init_room() {
     const btnSend = document.getElementById('btn-send');
 
     // =========================
-    // ✅ PREVENT PAGE RELOAD
+    // ✅ VIDEO SEARCH HANDLER (CORRIGÉ)
     // =========================
+    const videoSearchForm = document.getElementById('video-search-form');
 
-    // Empêche tout submit global de formulaire
-    document.addEventListener('submit', (e) => {
-        e.preventDefault();
-    });
+    if (videoSearchForm) {
+        videoSearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
 
-    // Empêche les Enter non voulus de recharger la page
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const target = e.target;
+            const input = videoSearchForm.querySelector('input');
+            const videoId = input?.value?.trim();
 
-            // Autoriser uniquement dans le chat
-            if (target && target.id !== 'msg-input') {
-                e.preventDefault();
+            if (videoId && window.player && window.player.loadVideoById) {
+                window.player.loadVideoById(videoId);
             }
-        }
-    });
+        });
+    }
 
-    // --- USERS ---
+    // =========================
+    // USERS
+    // =========================
     socket.on('update_users', (users) => {
         if (usersList) {
             usersList.innerHTML = users.map(u =>
@@ -54,7 +53,9 @@ function init_room() {
         }
     });
 
-    // --- CHAT MESSAGE ---
+    // =========================
+    // CHAT
+    // =========================
     socket.on('receive_message', (data) => {
         if (!chatBox) return;
 
@@ -96,9 +97,7 @@ function init_room() {
     }
 
     if (btnSend) {
-        // sécurité : bouton jamais en submit
         btnSend.type = "button";
-
         btnSend.addEventListener('click', sendMessage);
     }
 
@@ -123,7 +122,9 @@ function init_room() {
         }
     });
 
-    // --- LEAVE ---
+    // =========================
+    // LEAVE
+    // =========================
     const btnLeave = document.getElementById('btn-leave-room');
     if (btnLeave) {
         btnLeave.addEventListener('click', () => {
@@ -132,7 +133,9 @@ function init_room() {
         });
     }
 
-    // --- YOUTUBE ---
+    // =========================
+    // YOUTUBE
+    // =========================
     window.onYouTubeIframeAPIReady = function () {
         window.player = new YT.Player('player', {
             height: '100%',
@@ -147,7 +150,9 @@ function init_room() {
     tag.src = "https://www.youtube.com/iframe_api";
     document.body.appendChild(tag);
 
-    // --- SYNC VIDEO ---
+    // =========================
+    // SYNC VIDEO
+    // =========================
     let currentController = null;
     let isSyncing = false;
 
@@ -200,7 +205,9 @@ function init_room() {
         setTimeout(() => { isSyncing = false; }, 500);
     });
 
-    // --- CHAT HISTORY ---
+    // =========================
+    // CHAT HISTORY
+    // =========================
     socket.on('chat_history', (messages) => {
         if (!chatBox) return;
 
