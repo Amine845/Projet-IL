@@ -166,6 +166,16 @@ socket.join(roomCode);
         io.to(roomCode).emit('update_users', rooms[roomCode].users);
         if (rooms[roomCode].controller) socket.emit('update_controller', rooms[roomCode].controller);
         socket.to(roomCode).emit('receive_message', { username: 'Système', text: `${username} a rejoint.`, isSystem: true });
+
+        const messages = await pool.query(`
+        SELECT c.timestamp_video_seconds, c.message_text, u.username
+        FROM chat c
+        LEFT JOIN "user" u ON c.user_id = u.user_id
+        WHERE c.room_id = $1
+        ORDER BY c.chat_id ASC
+    `, [roomIdInt]);
+
+socket.emit('chat_history', messages.rows);
     });
 
     socket.on('check_room_existence', (code) => {
