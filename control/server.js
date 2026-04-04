@@ -368,7 +368,37 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
+// --- GESTION DE L'ABONNEMENT PREMIUM ---
 
+// 1. Route pour souscrire à l'abonnement
+app.post('/api/subscribe', async (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ success: false, message: "Username manquant" });
+
+    try {
+        // Met à jour l'utilisateur dans la base de données
+        await pool.query('UPDATE "user" SET is_premium = TRUE WHERE username = $1', [username]);
+        res.json({ success: true, message: "Abonnement Premium activé avec succès !" });
+    } catch (err) {
+        console.error("Erreur lors de l'abonnement:", err);
+        res.status(500).json({ success: false, message: "Erreur serveur" });
+    }
+});
+
+// 2. Route pour vérifier le statut de l'utilisateur (utile au rechargement de la page)
+app.get('/api/user-status/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const result = await pool.query('SELECT is_premium FROM "user" WHERE username = $1', [username]);
+        
+        if (result.rowCount === 0) return res.json({ is_premium: false });
+        
+        res.json({ is_premium: result.rows[0].is_premium });
+    } catch (err) {
+        console.error("Erreur vérification statut:", err);
+        res.status(500).json({ is_premium: false });
+    }
+});
 
 /*
 const PORT = 3000;

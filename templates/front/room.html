@@ -23,14 +23,30 @@
         .smoke { background-color: rgba(172, 172, 172, 0.199); }
         .force-shadow { box-shadow: black 0px 0px 20px; }
         .force-corner { border-radius: 10px; }
+        .pro-locked { 
+            opacity: 0.5; 
+            cursor: not-allowed !important; 
+            transition: opacity 0.3s;
+        }
+        .pro-locked:hover { 
+            opacity: 0.8; /* Donne un petit retour visuel quand l'utilisateur passe la souris */
+        }
     </style>
 </head>
 <body style="background-image: url(/templates/src/background2.png);background-size: 100%;">
 
-<div class="container-fluid p-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <h3>Salon <span id="display-code" class="text-warning"></span></h3>
-        <button id="btn-leave-room" class="btn btn-outline-danger btn-sm">Quitter</button>
+    <div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Salon <span id="display-code" class="text-warning"></span></h3>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-dark border border-secondary rounded-pill px-3 py-1 shadow-sm">
+                <i class="fa fa-user text-info me-1"></i> 
+                <span id="display-username" class="fw-bold text-white">Pseudo</span>
+                <span id="premium-badge" class="badge bg-secondary ms-2 align-middle" style="font-size: 0.7em;">Chargement...</span>
+            </div>
+            <button id="btn-leave-room" class="btn btn-danger btn-sm shadow-sm"><i class="fa fa-sign-out me-1"></i> Quitter</button>
+        </div>
     </div>
 
     <div class="col-md-8 ">
@@ -51,39 +67,55 @@
 
         <div id="filters-panel" class="mt-3 p-3 bg-dark border border-secondary rounded d-none shadow-lg">
             <div class="row">
-                <div class="col-md-4">
-                    <div class="filter-header text-muted fw-bold mb-2">Contenu</div>
-                    <input type="text" id="filter-text" class="form-control form-control-sm bg-secondary text-white border-0" placeholder="Filtrer titre...">
+                
+                <div class="filter-header text-muted fw-bold mb-3 border-bottom border-secondary pb-1">
+                    Contenu <i class="fa fa-crown text-warning ms-1" title="Fonctionnalité PRO" style="font-size: 0.8em;"></i>
                 </div>
-                <div class="col-md-4 mb-3">
+                <div id="filter-text-wrapper" class="pro-locked" style="cursor: pointer;">
+                    <input type="text" id="filter-text" class="form-control form-control-sm bg-secondary text-white border-0" placeholder="Filtrer titre..." disabled style="pointer-events: none;">
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <div class="filter-header text-muted fw-bold mb-2">Trier par</div>
+                    <div class="d-flex flex-column gap-1">
+                        <span class="filter-option active text-primary" style="cursor:pointer" data-type="sort" data-value="relevance">Pertinence</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="sort" data-value="date_new"><i class="fa fa-crown text-warning me-1"></i>Plus récents</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="sort" data-value="alpha_asc"><i class="fa fa-crown text-warning me-1"></i>Alphabétique</span>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
                     <div class="filter-header text-muted fw-bold mb-2">Durée</div>
                     <div class="d-flex flex-column gap-1">
-                        <span class="filter-option active text-primary" style="cursor:pointer" data-type="duration" data-value="all">Toutes</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="duration" data-value="short">Moins de 3 minutes</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="duration" data-value="medium">3 à 20 minutes</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="duration" data-value="long">Plus de 20 minutes</span>
+                        <span class="filter-option active text-primary" style="cursor:pointer" data-type="duration" data-value="all">Durée</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="duration" data-value="short"><i class="fa fa-crown text-warning me-1"></i>- de 3 min</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="duration" data-value="medium"><i class="fa fa-crown text-warning me-1"></i>3 à 20 min</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="duration" data-value="long"><i class="fa fa-crown text-warning me-1"></i>+ de 20 min</span>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
+
+                <div class="col-md-3 mb-3">
                     <div class="filter-header text-muted fw-bold mb-2">Date d'ajout</div>
                     <div class="d-flex flex-column gap-1">
-                        <span class="filter-option active text-primary" style="cursor:pointer" data-type="uploadDate" data-value="all">Toutes</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="uploadDate" data-value="today">Aujourd'hui</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="uploadDate" data-value="week">Cette semaine</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="uploadDate" data-value="month">Ce mois-ci</span>
-                        <span class="filter-option" style="cursor:pointer" data-type="uploadDate" data-value="year">Cette année</span>
+                        <span class="filter-option active text-primary" style="cursor:pointer" data-type="uploadDate" data-value="all">Date</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="uploadDate" data-value="today"><i class="fa fa-crown text-warning me-1"></i>Aujourd'hui</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="uploadDate" data-value="week"><i class="fa fa-crown text-warning me-1"></i>Cette semaine</span>
+                        <span class="filter-option pro-option pro-locked" style="cursor:pointer" data-type="uploadDate" data-value="month"><i class="fa fa-crown text-warning me-1"></i>Ce mois-ci</span>
                     </div>
                 </div>
+
             </div>
             <div class="d-flex justify-content-end mt-3">
                 <button id="reset-filters" class="btn btn-outline-light btn-sm">Réinitialiser les filtres</button>
             </div>
         </div>
+
     </div>
 
-    <div class="row mt-3">
-        <!-- Colonne Gauche : Lecteur Vidéo -->
+<div class="row mt-3">
+        
         <div class="col-md-8">
+            
             <div class="mb-2 d-flex justify-content-between">
                 <span>En contrôle : <strong id="controller-name" class="text-info">Personne</strong></span>
                 <button id="btn-control" class="btn btn-sm btn-warning">Prendre le contrôle</button>
@@ -91,35 +123,33 @@
             <div id="player-container" class="floating-frame">
                 <div id="player"></div>
             </div>
-        </div>
 
-        <!-- ZONE D'ANALYSE (MARQUEURS) -->
-        <div class="card mt-3 floating-frame text-white bg-dark border-secondary">
-            <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Analyse Collaborative</h5>
-                <span id="current-time-display" class="badge bg-primary">00:00</span>
-            </div>
-            <div class="card-body">
-                <div class="input-group mb-3">
-                    <button class="btn btn-outline-warning" type="button" id="btn-capture-time">Capturer</button>
-                        <select id="marker-category" class="form-select bg-dark text-white border-secondary" style="max-width: 130px;">
-                            <option value="info" selected>Note</option>
-                            <option value="success">Positif</option>
-                            <option value="danger">Erreur</option>
-                            <option value="warning">Alerte</option>
-                        </select>
-                    <input type="text" id="marker-input" class="form-control bg-secondary text-white border-secondary" placeholder="Ajouter une observation à ce moment...">
-                    <button class="btn btn-warning" type="button" id="btn-add-marker">Ajouter</button>
+            <div class="card mt-3 floating-frame text-white bg-dark border-secondary">
+                <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Analyse Collaborative</h5>
+                    <span id="current-time-display" class="badge bg-primary">00:00</span>
                 </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <button class="btn btn-outline-warning" type="button" id="btn-capture-time">Capturer</button>
+                            <select id="marker-category" class="form-select bg-dark text-white border-secondary" style="max-width: 130px;">
+                                <option value="info" selected>Note</option>
+                                <option value="success">Positif</option>
+                                <option value="danger">Erreur</option>
+                                <option value="warning">Alerte</option>
+                            </select>
+                        <input type="text" id="marker-input" class="form-control bg-secondary text-white border-secondary" placeholder="Ajouter une observation à ce moment...">
+                        <button class="btn btn-warning" type="button" id="btn-add-marker">Ajouter</button>
+                    </div>
 
-                <div style="max-height: 250px; overflow-y: auto;">
-                    <ul id="markers-list" class="list-group list-group-flush"></ul>
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        <ul id="markers-list" class="list-group list-group-flush"></ul>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Colonne Droite : Chat & Users -->
-        <div class="col-md-4" >
+        </div> <div class="col-md-4" >
+            
             <div id="chat-n-user-container" class="smoke liquid force-shadow force-corner d-flex" style="height: 100%;flex-direction: column;">
                 <div class="nav nav-tabs d-flex input-group card-header" style="border-radius: 0px 5px;" id="nav-tab" role="tablist">
                     <button style="width: 50%;" class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#show-chat" type="button">Clavardage</button>
@@ -143,12 +173,12 @@
                     </div>
                 </div>
             </div>
+
         </div>
-    </div>
-</br>
 
     <!-- PLAYLIST -->
     <div class="card text-white border-secondary mb-3">
+        </br>
         <div class="card-header border-secondary text-white smoke liquid" style="display: inline-flex;">
             <h6 class="card-title"><i class="fas fa-list"></i> Playlist en attente</h6>
             <button id="add-current-video-btn" class="btn btn-success card-header liquid" style="position: fixed; right: 20px;">
