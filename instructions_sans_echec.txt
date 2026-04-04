@@ -1,0 +1,87 @@
+sudo rm /etc/apt/sources.list.d/yarn.list
+
+sudo apt-get update
+
+sudo apt-get update && sudo apt-get install postgresql postgresql-contrib -y
+
+npm install
+
+npm install bcrypt
+
+sudo service postgresql start
+
+sudo su
+
+su - postgres -c "psql -c \"CREATE USER uapv2401716 WITH PASSWORD 'QjBchY';\""
+
+su - postgres -c "psql -c \"CREATE DATABASE etd;\""
+
+su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE etd TO uapv2401716;\""
+
+su - postgres -c "psql -d etd -c \"GRANT ALL ON SCHEMA public TO uapv2401716;\""
+
+exit
+
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -f tables.sql
+
+#copier d'un coup :
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "
+INSERT INTO \"user\" (username, password, role) VALUES ('AdminTest', '12345', 'admin');
+INSERT INTO room (name, password, host_id) VALUES ('Salon de Test', NULL, 1);
+INSERT INTO playlist (room_id, video_count) VALUES (1, 1);
+INSERT INTO video (\"URL\", title, playlist_id) VALUES ('dQw4w9WgXcQ', 'Never Gonna Give You Up', 1);"
+
+
+node control/server.js
+
+
+#si pas fait : 
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "CREATE TABLE marker (marker_id SERIAL PRIMARY KEY, room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE, user_id INTEGER REFERENCES \"user\"(user_id) ON DELETE SET NULL, timestamp_seconds REAL NOT NULL, comment TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+
+
+#entrer dans la bdd:
+psql -h 127.0.0.1 -U uapv2401716 etd
+
+
+arborescence du site : 
+
+racine/
+├── admin/
+├── backup/
+├── class/
+│   ├── login.php
+│   └── user.php
+├── control/
+│   ├── node_modules/
+│   ├── login.php
+│   ├── logout.php
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── register.php
+│   └── server.js
+├── model/
+│   ├── config.php
+│   ├── GestionDB.php
+│   └── userdb.php
+├── node_modules/
+├── templates/
+│   ├── CSS/
+│   │   └── style.css
+│   ├── front/
+│   │   ├── corps.php
+│   │   ├── index.html
+│   │   ├── login.html
+│   │   ├── room.html
+│   │   └── signup.html
+│   └── src/
+│       ├── js/
+│       │   ├── index.js
+│       │   └── room.js
+│       ├── background.png
+│       └── background2.png
+├── instructions.txt
+├── package-lock.json
+├── package.json
+├── README.md
+├── tables.sql
+└── testDB.html
