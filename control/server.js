@@ -205,16 +205,7 @@ socket.join(roomCode);
                 io.to(code).emit('update_users', rooms[code].users);
                 
                 try {
-                    const userCheck = await pool.query('SELECT role FROM "user" WHERE username = $1', [username]);
-                    
-                    if (userCheck.rowCount > 0) {
-                        const role = userCheck.rows[0].role;
-                        if (role === 'guest') {
-                            await pool.query('DELETE FROM "user" WHERE username = $1', [username]);
-                        } else {
-                            await pool.query('UPDATE "user" SET current_room_id = NULL WHERE username = $1', [username]);
-                        }
-                    }
+                    await pool.query('UPDATE "user" SET current_room_id = NULL WHERE username = $1', [username]);
 
                     if (rooms[code].users.length === 0) {
                         console.log(`[SERVEUR] La salle ${code} est vide. Suppression dans 5 secondes...`);
