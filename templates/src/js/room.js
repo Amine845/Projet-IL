@@ -66,6 +66,17 @@ async function checkRoomPremiumStatus(user) {
         }
     }
 
+    // Récupérer le Timestamp de la vidéo de manière sécure
+    function getVideoCurrentTimeSafely(){
+        if (!window.player || !window.player.seekTo) return 0;
+        return Math.floor(window.player.getCurrentTime()/1000);
+    }
+
+    // Récupérer le Timestamp actuel en millisecond
+    function getCurrentTimeFormatedInMillisecond(){
+        return Math.floor(time.now()/1000);
+    }
+
     // On lance la vérification dès l'entrée dans la room
     checkRoomPremiumStatus(username);
 
@@ -105,7 +116,7 @@ async function checkRoomPremiumStatus(user) {
 
     function sendMessage() {
         if (msgInput && msgInput.value.trim()) {
-            socket.emit('send_message', { roomCode, username, text: msgInput.value });
+            socket.emit('send_message', { roomCode, username, text: msgInput.value, currentVideoTime: getVideoCurrentTimeSafely(),currentTime: getCurrentTimeFormatedInMillisecond() });
             msgInput.value = '';
         }
     }
