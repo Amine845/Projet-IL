@@ -14,6 +14,63 @@ function init_room() {
     const displayCode = document.getElementById('display-code');
     if(displayCode) displayCode.textContent = roomCode;
 
+    // --- NOUVEAU : AFFICHER LE PSEUDO ---
+    const displayUsername = document.getElementById('display-username');
+    if(displayUsername) displayUsername.textContent = username;
+
+    // --- NOUVEAU : GESTION DU STATUT PREMIUM ---
+    let isUserPremium = false; // Par défaut, on considère l'utilisateur gratuit
+    const premiumBadge = document.getElementById('premium-badge');
+
+async function checkRoomPremiumStatus(user) {
+        try {
+            const res = await fetch(`/api/user-status/${user}`);
+            const data = await res.json();
+            isUserPremium = data.is_premium;
+
+            const filterTextInput = document.getElementById('filter-text');
+            const filterTextWrapper = document.getElementById('filter-text-wrapper');
+
+            if (isUserPremium) {
+                // ... (Logique des badges existante) ...
+                if (premiumBadge) {
+                    premiumBadge.innerHTML = '<i class="fa fa-crown"></i> PRO';
+                    premiumBadge.className = 'badge bg-warning text-dark ms-2 align-middle';
+                }
+                document.querySelectorAll('.pro-option').forEach(el => el.classList.remove('pro-locked'));
+                
+                // NOUVEAU : Déverrouiller le champ texte
+                if (filterTextInput) {
+                    filterTextInput.disabled = false;
+                    filterTextInput.style.pointerEvents = "auto";
+                }
+                if (filterTextWrapper) filterTextWrapper.classList.remove('pro-locked');
+
+            } else {
+                // ... (Logique des badges existante) ...
+                if (premiumBadge) {
+                    premiumBadge.innerHTML = 'Gratuit';
+                    premiumBadge.className = 'badge bg-secondary ms-2 align-middle';
+                }
+                document.querySelectorAll('.pro-option').forEach(el => el.classList.add('pro-locked'));
+                
+                // NOUVEAU : Verrouiller le champ texte
+                if (filterTextInput) {
+                    filterTextInput.disabled = true;
+                    filterTextInput.style.pointerEvents = "none";
+                }
+                if (filterTextWrapper) filterTextWrapper.classList.add('pro-locked');
+            }
+        } catch (e) {
+            console.error("Erreur vérification statut premium:", e);
+        }
+    }
+
+    // On lance la vérification dès l'entrée dans la room
+    checkRoomPremiumStatus(username);
+
+    socket.emit('join_room', { roomCode, username });
+
     socket.emit('join_room', { roomCode, username });
     socket.emit('request_markers', roomCode);
 
@@ -239,6 +296,16 @@ function init_room() {
         return hours*3600 + minutes*60 + seconds;
     }
 
+    // --- NOUVEAU : PAYWALL POUR LE CHAMP TEXTE ---
+    const filterTextWrapper = document.getElementById('filter-text-wrapper');
+    if (filterTextWrapper) {
+        filterTextWrapper.addEventListener('click', () => {
+            if (!isUserPremium) {
+                alert("La recherche par mots-clés est une fonctionnalité avancée réservée aux comptes PRO. Retournez à l'accueil pour y souscrire !");
+            }
+        });
+    }
+
     function applyFilters() {
         let filtered = [...allResults];
 
@@ -284,10 +351,18 @@ function init_room() {
     const btnResetFilters = document.getElementById("reset-filters");
     if(btnResetFilters) btnResetFilters.addEventListener("click", resetFilters);
 
-    document.querySelectorAll(".filter-option").forEach(el => {
+document.querySelectorAll(".filter-option").forEach(el => {
         el.addEventListener("click", () => {
             const type = el.dataset.type;
             const val = el.dataset.value;
+
+            // --- NOUVEAU : LE MUR DE PAIEMENT (PAYWALL) ---
+            // Si l'utilisateur n'est pas PRO ET qu'il clique sur une option ayant la classe 'pro-option'
+            if (!isUserPremium && el.classList.contains('pro-option')) {
+                alert("Cette option de filtrage avancée est réservée aux comptes PRO. Retournez à l'accueil pour y souscrire !");
+                return; // Annulation totale de l'action
+            }
+
             document.querySelectorAll(`.filter-option[data-type="${type}"]`).forEach(e => e.classList.remove("text-primary", "fw-bold"));
             el.classList.add("text-primary", "fw-bold");
             activeFilters[type] = val;
