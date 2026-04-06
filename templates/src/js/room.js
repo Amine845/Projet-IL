@@ -118,13 +118,26 @@ async function checkRoomPremiumStatus(user) {
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 
+    // Effectuer un rendu de messages en fonction du mode En Live / Pas En Live
+    function renderMessages(liveMessage, message){
+        if (message.length-chatCache.length <1) return;
+        
+        if (liveMessage) {
+            
+        }
+    }
+
     socket.on('update_messages', (message) => {
         if (!chatBox) return;
-        message.map(m => {
-            const div = document.createElement('div');
-            div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
-            chatBox.appendChild(div);
-        }).join('');
+        
+        renderMessages(true,message);
+        console.log(message);
+
+        //message.map(m => {
+        //    const div = document.createElement('div');
+        //    div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
+        //    chatBox.appendChild(div);
+        //}).join('');
     });
 
     function sendMessage() {
