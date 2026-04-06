@@ -194,12 +194,12 @@ socket.join(roomCode);
             `;
             await pool.query(insertQuery, [roomIdInt, userId, text, currentVideoTime, currentTime]);
 
-            //const allMessages = await pool.query(`
-            //    SELECT u.user_id, c.content, c.video_timestamp_milliseconds, c.current_timestamp_milliseconds 
-            //    FROM chat c LEFT JOIN "user" u ON c.user_id = u.user_id 
-            //    WHERE c.room_id = $1 ORDER BY c.video_timestamp_milliseconds ASC`, [roomIdInt]);
-
-            //io.to(roomCode).emit('update_messages', allMessages.rows);
+            const allMessages = await pool.query(`
+                SELECT u.username, c.content, c.video_timestamp_milliseconds, c.current_timestamp_milliseconds 
+                FROM chat c LEFT JOIN "user" u ON c.user_id = u.user_id 
+                WHERE c.room_id = $1 ORDER BY c.video_timestamp_milliseconds ASC`, [roomIdInt]);
+            
+            io.to(roomCode).emit('update_messages', allMessages.rows);
             console.log("CHAT : Message sent");
 
         } catch (err) {

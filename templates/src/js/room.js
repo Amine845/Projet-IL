@@ -1,5 +1,9 @@
 function init_room() {
 
+
+    // Variable pour le cache du Chat
+    var chatCache = [];
+
     const socket = io();
 
     const params = new URLSearchParams(window.location.search);
@@ -112,6 +116,15 @@ async function checkRoomPremiumStatus(user) {
         }
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    socket.on('update_messages', (message) => {
+        if (!chatBox) return;
+        message.map(m => {
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
+            chatBox.appendChild(div);
+        }).join('');
     });
 
     function sendMessage() {
