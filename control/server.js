@@ -38,6 +38,20 @@ app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'test
 let rooms = {}; 
 let roomCleanupTimers = {}; // stocker les timers des salles vides
 
+
+
+
+
+//////  ---------- RACCOURCI POUR DES REQUÊTES SQL -----------
+
+const sqlRequestAllChatMessages = `
+                SELECT u.username, c.content, c.video_timestamp_milliseconds, c.current_timestamp_milliseconds 
+                FROM chat c LEFT JOIN "user" u ON c.user_id = u.user_id 
+                WHERE c.room_id = $1 ORDER BY c.video_timestamp_milliseconds ASC`;
+
+
+
+
 function generateRoomCode() {
     let code;
     do {
@@ -194,10 +208,7 @@ socket.join(roomCode);
             `;
             await pool.query(insertQuery, [roomIdInt, userId, text, currentVideoTime, currentTime]);
 
-            const allMessages = await pool.query(`
-                SELECT u.username, c.content, c.video_timestamp_milliseconds, c.current_timestamp_milliseconds 
-                FROM chat c LEFT JOIN "user" u ON c.user_id = u.user_id 
-                WHERE c.room_id = $1 ORDER BY c.video_timestamp_milliseconds ASC`, [roomIdInt]);
+            const allMessages = await pool.query(sqlRequestAllChatMessages , [roomIdInt]);
             
             io.to(roomCode).emit('update_messages', allMessages.rows);
             console.log("CHAT : Message sent");
@@ -309,6 +320,16 @@ socket.join(roomCode);
             socket.emit('update_markers', res.rows);
         } catch (err) {
             console.error("Erreur chargement marqueurs:", err);
+        }
+    });
+
+    socket.on('request_messages', async (roomCode) => {
+        const roomIdInt = parseInt(roomCode);
+        try {
+            const res = await pool.query(sqlRequestAllChatMessages, [roomIdInt]);
+            socket.emit('update_messages', res.rows);
+        } catch (err) {
+            console.error("Erreur chargement messages:", err);
         }
     });
 });

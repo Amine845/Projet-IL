@@ -88,6 +88,7 @@ async function checkRoomPremiumStatus(user) {
 
     socket.emit('join_room', { roomCode, username });
     socket.emit('request_markers', roomCode);
+    socket.emit('request_messages', roomCode);
 
     // --- VARIABLES DOM CHAT ---
     const chatBox = document.getElementById('chat-box');
@@ -109,6 +110,7 @@ async function checkRoomPremiumStatus(user) {
         if (!chatBox) return;
         const div = document.createElement('div');
         if (data.isSystem) {
+            console.log("USER JOINED EVENT")
             div.className = 'system-msg';
             div.textContent = data.text;
         } else {
@@ -120,25 +122,32 @@ async function checkRoomPremiumStatus(user) {
 
     // Effectuer un rendu de messages en fonction du mode En Live / Pas En Live
     function renderMessages(liveMessage, message){
-        if (message.length-chatCache.length <1) return;
-        
+        const tailleMessage = message.length;
+        const deltaDeTaille = message.length-chatCache.length;
+
+        if (deltaDeTaille <1) return;
+
+
         if (liveMessage) {
-            
+            for (var i = 0; i < deltaDeTaille; i++){
+                let m = message[tailleMessage-deltaDeTaille+i];
+                let div = document.createElement('div');
+                div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
+                console.log(m.username, message);
+                chatBox.appendChild(div);
+                
+            }
         }
+
+
+        chatCache = message;
     }
 
     socket.on('update_messages', (message) => {
         if (!chatBox) return;
         
         renderMessages(true,message);
-        console.log(message);
-
-        //message.map(m => {
-        //    const div = document.createElement('div');
-        //    div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
-        //    chatBox.appendChild(div);
-        //}).join('');
-    });
+});
 
     function sendMessage() {
         if (msgInput && msgInput.value.trim()) {
