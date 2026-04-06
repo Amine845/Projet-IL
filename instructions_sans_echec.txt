@@ -37,6 +37,7 @@ node control/server.js
 
 #si pas fait : 
 PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "CREATE TABLE marker (marker_id SERIAL PRIMARY KEY, room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE, user_id INTEGER REFERENCES \"user\"(user_id) ON DELETE SET NULL, timestamp_seconds REAL NOT NULL, comment TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+PGPASSWORD='QjBchY' psql -h 127.0.0.1 -U uapv2401716 -d etd -c "CREATE TABLE chat (chat_id SERIAL PRIMARY KEY,room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE,user_id INTEGER REFERENCES \"user\"(user_id) ON DELETE SET NULL,content TEXT NOT NULL,video_timestamp_milliseconds INTEGER NOT NULL,current_timestamp_milliseconds INTEGER NOT NULL);"
 
 
 #entrer dans la bdd:
