@@ -74,7 +74,7 @@ async function checkRoomPremiumStatus(user) {
 
     // Récupérer le Timestamp actuel en millisecond
     function getCurrentTimeFormatedInMillisecond(){
-        return Math.floor(time.now()/1000);
+        return Math.floor(Date.now()/1000);
     }
 
     // On lance la vérification dès l'entrée dans la room
@@ -116,7 +116,13 @@ async function checkRoomPremiumStatus(user) {
 
     function sendMessage() {
         if (msgInput && msgInput.value.trim()) {
-            socket.emit('send_message', { roomCode, username, text: msgInput.value, currentVideoTime: getVideoCurrentTimeSafely(),currentTime: getCurrentTimeFormatedInMillisecond() });
+            socket.emit('send_message', {
+                roomCode: roomCode,
+                username: username,
+                text: msgInput.value,
+                currentVideoTime: getVideoCurrentTimeSafely(),
+                currentTime: getCurrentTimeFormatedInMillisecond() 
+            });
             msgInput.value = '';
         }
     }

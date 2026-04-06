@@ -1,5 +1,5 @@
 -- 1. NETTOYAGE COMPLET
-DROP TABLE IF EXISTS marker, video, playlist, room, "user" CASCADE;
+DROP TABLE IF EXISTS chat, marker, video, playlist, room, "user" CASCADE;
 
 -- 2. CRÉATION DES TABLES
 
