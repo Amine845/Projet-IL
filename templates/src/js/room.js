@@ -3,6 +3,10 @@ function init_room() {
 
     // Variable pour le cache du Chat
     var chatCache = [];
+    var offLiveChatCache = [];
+
+    // Sauvegarde du timestamp de vidéo
+    var videoTimestampLePlusLoin = 0;
 
     const socket = io();
 
@@ -121,26 +125,50 @@ async function checkRoomPremiumStatus(user) {
     });
 
     // Effectuer un rendu de messages en fonction du mode En Live / Pas En Live
-    function renderMessages(liveMessage, message){
-        const tailleMessage = message.length;
-        const deltaDeTaille = message.length-chatCache.length;
-
-        if (deltaDeTaille <1) return;
+    function renderMessages(liveMessage, message, timestamp=0){
 
 
-        if (liveMessage) {
-            for (var i = 0; i < deltaDeTaille; i++){
-                let m = message[tailleMessage-deltaDeTaille+i];
-                let div = document.createElement('div');
+        // Filtrer les messages en direct et en rediffusion pour éviter les problèmes de collision
+        if (liveMessage && message.length >0) {
+            const tailleMessage = message.length;
+            const deltaDeTaille = message.length-chatCache.length;
+
+            // Cela évite de faire le traitement si il n'y a pas de nouveaux messages
+            if (deltaDeTaille <1) return;
+            
+            for (let i = 0; i < deltaDeTaille; i++){
+                const m = message[tailleMessage-deltaDeTaille+i];
+                const div = document.createElement('div');
                 div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
-                console.log(m.username, message);
                 chatBox.appendChild(div);
                 
             }
+
+            chatCache = message;
+        } else {
+
+            console.log("rendering offLive", timestamp);
+            if (chatCache.length == 0) return;
+
+            // Effectuer un parcours des messages pour trouver le message le plus récent dans la rediffusion
+            let bcl = -1;
+            while (message[bcl+1].video_timestamp_milliseconds < timestamp)bcl++;    
+            
+            if (bcl== -1) return; // Permet d'éviter des dépassements de domaine
+
+            const tailleMessage = bcl;
+            const deltaDeTaille = bcl-offLiveChatCache.length;
+
+            for (let i = 0; i < deltaDeTaille; i++){
+                const m = message[tailleMessage-deltaDeTaille+i];
+                const div = document.createElement('div');
+                div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
+                chatBox.appendChild(div);
+            }
+
+            offLiveChatCache = message;
         }
 
-
-        chatCache = message;
     }
 
     socket.on('update_messages', (message) => {
@@ -227,6 +255,13 @@ async function checkRoomPremiumStatus(user) {
         if (currentController === username && !isSyncing) {
             let state = event.data;
             let time = window.player.getCurrentTime();
+
+            if (videoTimestampLePlusLoin - time >0)
+            renderMessages(false,chatCache,time);
+            else videoTimestampLePlusLoin = time;
+            
+
+            
             if (state === YT.PlayerState.PLAYING) socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
             else if (state === YT.PlayerState.PAUSED) socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
         }
@@ -237,7 +272,9 @@ async function checkRoomPremiumStatus(user) {
         isSyncing = true;
         if (Math.abs(window.player.getCurrentTime() - data.currentTime) > 1) {
             window.player.seekTo(data.currentTime);
+            
         }
+        renderMessages(false, chatCache, getVideoCurrentTimeSafely());
         if (data.type === 'play') window.player.playVideo();
         else if (data.type === 'pause') window.player.pauseVideo();
         setTimeout(() => { isSyncing = false; }, 500);
