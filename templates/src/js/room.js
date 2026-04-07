@@ -145,7 +145,7 @@ async function checkRoomPremiumStatus(user) {
 
             chatCache = message;
         } else {
-
+            
             
             if (message.length == 0) return;
 
@@ -154,20 +154,21 @@ async function checkRoomPremiumStatus(user) {
             while ( bcl+1 < message.length && message[bcl+1].video_timestamp_milliseconds < timestamp)bcl++;    
             bcl++;
 
+            
+
             if (bcl== -1) return; // Permet d'éviter des dépassements de domaine
 
             const tailleMessage = bcl;
             const deltaDeTaille = bcl-offLiveChatCache.length;
-
+            console.log(offLiveChatCache.length);
             for (let i = 0; i < deltaDeTaille; i++){
                 const m = message[tailleMessage-deltaDeTaille+i];
                 const div = document.createElement('div');
                 div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
                 chatBox.appendChild(div);
-                console.log("message created", m.content, "bcl :", bcl, "delta :", deltaDeTaille);
+                offLiveChatCache.push(m);
             }
 
-            offLiveChatCache = message;
         }
 
     }
@@ -257,7 +258,7 @@ async function checkRoomPremiumStatus(user) {
             let state = event.data;
             let time = window.player.getCurrentTime();
 
-            if (videoTimestampLePlusLoin < time-1){
+            if (videoTimestampLePlusLoin-1 > time){
             
             offLiveChatCache = [];
             chatBox.innerHTML = '';
@@ -602,15 +603,19 @@ document.querySelectorAll(".filter-option").forEach(el => {
         }).join('');
     });
 
-    while (true){
-        setTimeout(() => { 
-            
-            if (videoTimestampLePlusLoin-window.player.video.getCurrentTime() > 1){
-                renderMessages(false,chatCache,getVideoCurrentTimeSafely());
-            }
 
-         }, 500);
-    }
+    setInterval( () => {
+       
+            if (videoTimestampLePlusLoin-1 > window.player.getCurrentTime()){
+                renderMessages(false,chatCache,getVideoCurrentTimeSafely());
+            }else {
+                videoTimestampLePlusLoin = window.player.getCurrentTime();
+            }
+            
+    }, 500);
+
+            
+
 }
 
 document.addEventListener('DOMContentLoaded', init_room);
