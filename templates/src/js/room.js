@@ -226,6 +226,12 @@ async function checkRoomPremiumStatus(user) {
     }
 
     function addVideoToPlaylist(videoId, title) {
+        // --- NOUVEAU : LE BRIDAGE DE LA PLAYLIST ---
+        if (!isUserPremium && playlist.length >= 2) {
+            alert("La version gratuite est limitée à 2 vidéos par playlist. Passez PRO pour des playlists illimitées !");
+            return; // On bloque l'ajout
+        }
+
         playlist.push({ id: videoId, title: title });
         renderPlaylist();
     }

@@ -31,6 +31,28 @@ function init_index() {
                 subscribeMsg.innerText = "Vous êtes déjà membre Premium.";
             }
         }
+        // Déverrouillage du bouton BDD
+        const btnDb = document.getElementById('btn-view-db');
+        const wrapperDb = document.getElementById('db-access-wrapper');
+        if(btnDb) {
+            btnDb.style.pointerEvents = "auto";
+            btnDb.classList.replace('btn-dark', 'btn-success');
+        }
+        if(wrapperDb) wrapperDb.classList.remove('pro-locked');
+        
+        if (wrapperDb) {
+            wrapperDb.addEventListener('click', () => {
+                const savedUser = localStorage.getItem('streamSquad_user');
+                // On vérifie si l'utilisateur est Premium (isUserPremium doit être accessible ou vérifié via fetch)
+                fetch(`/api/user-status/${savedUser}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data.is_premium) {
+                            alert("L'accès à la console de base de données est réservé aux comptes PRO (Usage technique/Admin).");
+                        }
+                    });
+            });
+}
     }
 
     // Fonction pour réinitialiser l'interface PRO (en cas de déconnexion)
@@ -49,6 +71,15 @@ function init_index() {
                 subscribeMsg.innerText = "14 jours d'essai offerts. Sans engagement.";
             }
         }
+
+        // Verrouillage du bouton BDD
+        const btnDb = document.getElementById('btn-view-db');
+        const wrapperDb = document.getElementById('db-access-wrapper');
+        if(btnDb) {
+            btnDb.style.pointerEvents = "none";
+            btnDb.classList.replace('btn-success', 'btn-dark');
+        }
+        if(wrapperDb) wrapperDb.classList.add('pro-locked');
     }
 
     // Vérifier en BDD si l'utilisateur est premium
