@@ -5,6 +5,7 @@ const { Server } = require("socket.io");
 const { Pool } = require('pg'); 
 const path = require('path');
 const bcrypt = require("bcrypt"); 
+const { type } = require('os');
 
 const app = express();
 app.use(express.json());
@@ -36,6 +37,20 @@ app.get('/testDB.html', (req, res) => res.sendFile(path.join(cheminRacine, 'test
 
 let rooms = {}; 
 let roomCleanupTimers = {}; // stocker les timers des salles vides
+
+
+
+
+
+//////  ---------- RACCOURCI POUR DES REQUÊTES SQL -----------
+
+const sqlRequestAllChatMessages = `
+                SELECT u.username, c.content, c.video_timestamp_milliseconds, c.current_timestamp_milliseconds 
+                FROM chat c LEFT JOIN "user" u ON c.user_id = u.user_id 
+                WHERE c.room_id = $1 ORDER BY c.video_timestamp_milliseconds ASC`;
+
+
+
 
 function generateRoomCode() {
     let code;
@@ -176,7 +191,37 @@ socket.join(roomCode);
         if (rooms[data.roomCode]) io.to(data.roomCode).emit('load_video', data.videoId);
     });
 
-    socket.on('send_message', (data) => io.to(data.roomCode).emit('receive_message', data));
+    socket.on('send_message', async(data) => {
+        const {roomCode, username, text, currentVideoTime, currentTime} = data;
+        const roomIdInt = parseInt(roomCode);
+        console.log("CHAT : Message received");
+        
+        try {
+            const userRes = await pool.query('SELECT user_id FROM "user" WHERE username = $1',[username]);
+            let userId = null;
+            if (userRes.rowCount > 0) userId = userRes.rows[0].user_id;
+
+            // CORRECTIF : La ligne manquante est ici !
+            const insertQuery = `
+                INSERT INTO chat (room_id, user_id, content, video_timestamp_milliseconds, current_timestamp_milliseconds)
+                VALUES ($1, $2, $3, $4, $5)
+            `;
+            await pool.query(insertQuery, [roomIdInt, userId, text, currentVideoTime, currentTime]);
+
+            const allMessages = await pool.query(sqlRequestAllChatMessages , [roomIdInt]);
+            
+            io.to(roomCode).emit('update_messages', allMessages.rows);
+            console.log("CHAT : Message sent");
+
+        } catch (err) {
+            console.error("Erreur ajout message:", err);
+        }
+
+        
+});
+
+
+    
     socket.on('typing', (data) => socket.to(data.roomCode).emit('user_typing', data.username));
 
     socket.on('claim_control', (data) => {
@@ -277,12 +322,22 @@ socket.join(roomCode);
             console.error("Erreur chargement marqueurs:", err);
         }
     });
+
+    socket.on('request_messages', async (roomCode) => {
+        const roomIdInt = parseInt(roomCode);
+        try {
+            const res = await pool.query(sqlRequestAllChatMessages, [roomIdInt]);
+            socket.emit('update_messages', res.rows);
+        } catch (err) {
+            console.error("Erreur chargement messages:", err);
+        }
+    });
 });
 
 async function cleanDatabase() {
     try {
         console.log("Nettoyage de la base de données...");
-        await pool.query('TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
+        await pool.query('TRUNCATE TABLE chat, video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
         console.log("Base de données nettoyée !");
     } catch (err) {
         console.error("Erreur nettoyage :", err);
@@ -294,7 +349,7 @@ app.post('/api/clean-db', async (req, res) => {
     try {
         console.log("[SERVEUR] Demande de nettoyage complet de la BDD...");
         
-        await pool.query('TRUNCATE TABLE video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
+        await pool.query('TRUNCATE TABLE chat, video, playlist, marker, room, "user" RESTART IDENTITY CASCADE');
         
         rooms = {};
         for (let timer in roomCleanupTimers) {

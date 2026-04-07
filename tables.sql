@@ -1,5 +1,5 @@
 -- 1. NETTOYAGE COMPLET
-DROP TABLE IF EXISTS marker, video, playlist, room, "user" CASCADE;
+DROP TABLE IF EXISTS chat, marker, video, playlist, room, "user" CASCADE;
 
 -- 2. CRÉATION DES TABLES
 
@@ -41,3 +41,12 @@ CREATE TABLE marker (
     category VARCHAR(20) DEFAULT 'info',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE chat (
+    chat_id SERIAL PRIMARY KEY,
+    room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES "user"(user_id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    video_timestamp_milliseconds INTEGER NOT NULL,
+    current_timestamp_milliseconds INTEGER NOT NULL,
+)
