@@ -231,7 +231,7 @@ socket.join(roomCode);
         }
     });
 
-    socket.on('video_action', (data) => socket.to(data.roomCode).emit('sync_video', data));
+    socket.on('video_action', (data) => {console.log("VIDEO ACTION RECEIVED");socket.to(data.roomCode).emit('sync_video', data)});
 
 // --- DÉCONNEXION ---
     socket.on('disconnect', async () => {

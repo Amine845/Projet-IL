@@ -77,7 +77,7 @@ async function checkRoomPremiumStatus(user) {
     // Récupérer le Timestamp de la vidéo de manière sécure
     function getVideoCurrentTimeSafely(){
         if (!window.player || !window.player.seekTo) return 0;
-        return Math.floor(window.player.getCurrentTime()/1000);
+        return Math.floor(window.player.getCurrentTime()*1000);
     }
 
     // Récupérer le Timestamp actuel en millisecond
@@ -127,7 +127,6 @@ async function checkRoomPremiumStatus(user) {
     // Effectuer un rendu de messages en fonction du mode En Live / Pas En Live
     function renderMessages(liveMessage, message, timestamp=0){
 
-
         // Filtrer les messages en direct et en rediffusion pour éviter les problèmes de collision
         if (liveMessage && message.length >0) {
             const tailleMessage = message.length;
@@ -147,13 +146,14 @@ async function checkRoomPremiumStatus(user) {
             chatCache = message;
         } else {
 
-            console.log("rendering offLive", timestamp);
-            if (chatCache.length == 0) return;
+            
+            if (message.length == 0) return;
 
             // Effectuer un parcours des messages pour trouver le message le plus récent dans la rediffusion
-            let bcl = -1;
-            while (message[bcl+1].video_timestamp_milliseconds < timestamp)bcl++;    
-            
+            var bcl = -1;
+            while ( bcl+1 < message.length && message[bcl+1].video_timestamp_milliseconds < timestamp)bcl++;    
+            bcl++;
+
             if (bcl== -1) return; // Permet d'éviter des dépassements de domaine
 
             const tailleMessage = bcl;
@@ -164,6 +164,7 @@ async function checkRoomPremiumStatus(user) {
                 const div = document.createElement('div');
                 div.innerHTML = `<strong>${m.username}:</strong> ${m.content}`;
                 chatBox.appendChild(div);
+                console.log("message created", m.content, "bcl :", bcl, "delta :", deltaDeTaille);
             }
 
             offLiveChatCache = message;
@@ -256,26 +257,53 @@ async function checkRoomPremiumStatus(user) {
             let state = event.data;
             let time = window.player.getCurrentTime();
 
-            if (videoTimestampLePlusLoin - time >0)
-            renderMessages(false,chatCache,time);
-            else videoTimestampLePlusLoin = time;
+            if (videoTimestampLePlusLoin < time-1){
+            
+            offLiveChatCache = [];
+            chatBox.innerHTML = '';
+            renderMessages(false,chatCache,getVideoCurrentTimeSafely());
+            }else {videoTimestampLePlusLoin = time;}
             
 
             
-            if (state === YT.PlayerState.PLAYING) socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
+            if (state === YT.PlayerState.PLAYING) {
+                socket.emit('video_action', { roomCode, type: 'play', currentTime: time });
+                if (videoTimestampLePlusLoin < time-1){
+                    offLiveChatCache = [];
+                    chatBox.innerHTML = '';
+                    renderMessages(false,chatCache,getVideoCurrentTimeSafely());
+                }
+
+                
+            }
             else if (state === YT.PlayerState.PAUSED) socket.emit('video_action', { roomCode, type: 'pause', currentTime: time });
         }
     }
 
     socket.on('sync_video', (data) => {
+        
         if (!window.player || !window.player.seekTo) return;
+        
         isSyncing = true;
         if (Math.abs(window.player.getCurrentTime() - data.currentTime) > 1) {
+
             window.player.seekTo(data.currentTime);
-            
+
+            offLiveChatCache = [];
+            chatBox.innerHTML = '';
+            renderMessages(false,chatCache,getVideoCurrentTimeSafely());
+
         }
-        renderMessages(false, chatCache, getVideoCurrentTimeSafely());
-        if (data.type === 'play') window.player.playVideo();
+        
+        if (data.type === 'play') {
+
+            if (Math.abs(window.player.getCurrentTime() - data.currentTime) > 1) {
+            offLiveChatCache = [];
+            chatBox.innerHTML = '';
+            renderMessages(false,chatCache,getVideoCurrentTimeSafely());
+            }
+            window.player.playVideo();}
+
         else if (data.type === 'pause') window.player.pauseVideo();
         setTimeout(() => { isSyncing = false; }, 500);
     });
@@ -574,6 +602,15 @@ document.querySelectorAll(".filter-option").forEach(el => {
         }).join('');
     });
 
+    while (true){
+        setTimeout(() => { 
+            
+            if (videoTimestampLePlusLoin-window.player.video.getCurrentTime() > 1){
+                renderMessages(false,chatCache,getVideoCurrentTimeSafely());
+            }
+
+         }, 500);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init_room);
